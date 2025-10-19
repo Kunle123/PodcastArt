@@ -1,0 +1,405 @@
+import { COOKIE_NAME } from "@shared/const";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { systemRouter } from "./_core/systemRouter";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { artworkBatchRouter } from "./routers/artworkBatch";
+import { downloadRouter } from "./routers/download";
+import { z } from "zod";
+import { uploadRouter } from "./routers/upload";
+import { paymentRouter } from "./routers/payment";
+import { syncRouter } from "./routers/sync";
+import { rssFeedRouter } from "./routers/rssFeed";
+
+export const appRouter = router({
+  system: systemRouter,
+  upload: uploadRouter,
+  payment: paymentRouter,
+  sync: syncRouter,
+  rssFeed: rssFeedRouter,
+
+  auth: router({
+    me: publicProcedure.query(opts => opts.ctx.user),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return {
+        success: true,
+      } as const;
+    }),
+  }),
+
+  // Projects router
+  projects: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserProjects } = await import('./db');
+      return getUserProjects(ctx.user.id);
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string(),
+        rssFeedUrl: z.string().url().optional(),
+        platform: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createProject } = await import('./db');
+        const { nanoid } = await import('nanoid');
+        
+        const project = {
+          id: nanoid(),
+          userId: ctx.user.id,
+          name: input.name,
+          rssFeedUrl: input.rssFeedUrl || null,
+          platform: input.platform || null,
+          platformApiKey: null,
+          platformPodcastId: null,
+        };
+
+        await createProject(project);
+        return project;
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const { getProject } = await import('./db');
+        const project = await getProject(input.id);
+        
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+        
+        return project;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        rssFeedUrl: z.string().url().optional(),
+        platform: z.string().optional(),
+        platformApiKey: z.string().optional(),
+        platformPodcastId: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, updateProject } = await import('./db');
+        const project = await getProject(input.id);
+        
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const { id, ...updates } = input;
+        await updateProject(id, updates);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, deleteProject } = await import('./db');
+        const project = await getProject(input.id);
+        
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        await deleteProject(input.id);
+        return { success: true };
+      }),
+
+    importRss: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        rssFeedUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, createEpisodes, updateProject } = await import('./db');
+        const { parseRssFeed } = await import('./utils/rssParser');
+        const { nanoid } = await import('nanoid');
+        const { checkEpisodeLimit } = await import('./utils/usageLimits');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        // Parse RSS feed
+        const feed = await parseRssFeed(input.rssFeedUrl);
+        
+        // Check usage limits for free users
+        if (ctx.user.subscriptionPlan === 'free' && feed.episodes.length > 10) {
+          throw new Error('Free plan is limited to 10 episodes. Upgrade to Pro for unlimited episodes.');
+        }
+
+        // Create episodes
+        const episodes = feed.episodes.map(ep => ({
+          id: nanoid(),
+          projectId: input.projectId,
+          title: ep.title,
+          episodeNumber: ep.episodeNumber || null,
+          seasonNumber: ep.seasonNumber || null,
+          description: ep.description || null,
+          originalArtworkUrl: ep.artworkUrl || null,
+          generatedArtworkUrl: null,
+          audioUrl: ep.audioUrl || null,
+          publishedAt: ep.publishedAt || null,
+          guid: ep.guid || null,
+        }));
+
+        await createEpisodes(episodes);
+
+        // Update project with RSS feed URL
+        await updateProject(input.projectId, { rssFeedUrl: input.rssFeedUrl });
+
+        return {
+          success: true,
+          episodeCount: episodes.length,
+          podcastTitle: feed.title,
+        };
+      }),
+  }),
+
+  // Episodes router
+  episodes: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const { getProject, getProjectEpisodes } = await import('./db');
+        const project = await getProject(input.projectId);
+        
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        return getProjectEpisodes(input.projectId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        generatedArtworkUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db');
+        const updateEpisode = db.updateEpisode;
+        await updateEpisode(input.id, { generatedArtworkUrl: input.generatedArtworkUrl || null });
+        return { success: true };
+      }),
+
+    importRss: protectedProcedure
+      .input(z.object({ projectId: z.string(), rssUrl: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, createEpisodes } = await import('./db');
+        const { parseRssFeed } = await import('./utils/rssParser');
+        const { nanoid } = await import('nanoid');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const parsedFeed = await parseRssFeed(input.rssUrl);
+        
+        const episodesToInsert = parsedFeed.episodes.map((ep: any) => ({
+          id: nanoid(),
+          projectId: input.projectId,
+          title: ep.title,
+          description: ep.description || null,
+          audioUrl: ep.audioUrl || null,
+          publishedAt: ep.publishDate,
+          episodeNumber: ep.episodeNumber?.toString() || null,
+          seasonNumber: ep.season?.toString() || null,
+          originalArtworkUrl: ep.artworkUrl || null,
+          generatedArtworkUrl: null,
+          guid: ep.guid || null,
+        }));
+
+        await createEpisodes(episodesToInsert);
+        
+        return { success: true, count: episodesToInsert.length };
+      }),
+
+    autoNumber: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, getProjectEpisodes, updateEpisode } = await import('./db');
+        const { smartAssignEpisodeNumbers } = await import('./utils/episodeNumbering');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const episodes = await getProjectEpisodes(input.projectId);
+        const assignments = smartAssignEpisodeNumbers(episodes);
+        
+        // Update all episodes with assigned numbers
+        for (const [episodeId, number] of Array.from(assignments.entries())) {
+          await updateEpisode(episodeId, { episodeNumber: number });
+        }
+        
+        return { success: true, count: assignments.size };
+      }),
+  }),
+  // Templates router
+  templates: router({
+    get: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const { getProject, getProjectTemplate } = await import('./db');
+        const project = await getProject(input.projectId);
+        
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        return getProjectTemplate(input.projectId);
+      }),
+
+    createOrUpdate: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+        name: z.string(),
+        baseArtworkUrl: z.string().optional(),
+        showEpisodeNumber: z.enum(['true', 'false']),
+        episodeNumberPosition: z.string(),
+        episodeNumberFont: z.string(),
+        episodeNumberSize: z.string(),
+        episodeNumberColor: z.string(),
+        episodeNumberBgColor: z.string(),
+        episodeNumberBgOpacity: z.string(),
+        showNavigation: z.enum(['true', 'false']),
+        navigationPosition: z.string(),
+        navigationStyle: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, getProjectTemplate, createTemplate, updateTemplate } = await import('./db');
+        const { nanoid } = await import('nanoid');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const existing = await getProjectTemplate(input.projectId);
+
+        if (existing) {
+          await updateTemplate(existing.id, input);
+          return { success: true, templateId: existing.id };
+        } else {
+          const template = {
+            id: nanoid(),
+            ...input,
+            isActive: 'true' as const,
+          };
+          await createTemplate(template);
+          return { success: true, templateId: template.id };
+        }
+      }),
+  }),
+
+  // Artwork generation router
+  artwork: router({
+    generateSingle: protectedProcedure
+      .input(z.object({ episodeId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getEpisode, getProject, getProjectTemplate, updateEpisode } = await import('./db');
+        const { generateEpisodeArtwork } = await import('./utils/artworkGenerator');
+        
+        const episode = await getEpisode(input.episodeId);
+        if (!episode) {
+          throw new Error('Episode not found');
+        }
+
+        const project = await getProject(episode.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const template = await getProjectTemplate(episode.projectId);
+        if (!template || !template.baseArtworkUrl) {
+          throw new Error('Template not configured');
+        }
+
+        if (!episode.episodeNumber) {
+          throw new Error('Episode number not set');
+        }
+
+        const artworkUrl = await generateEpisodeArtwork({
+          episodeNumber: episode.episodeNumber.toString(),
+          baseImageUrl: template.baseArtworkUrl,
+          numberPosition: template.episodeNumberPosition || 'top-right',
+          fontSize: parseInt(template.episodeNumberSize || '120'),
+          fontColor: template.episodeNumberColor || '#FFFFFF',
+          fontFamily: template.episodeNumberFont || 'Arial',
+          backgroundColor: template.episodeNumberBgColor || '#000000',
+          backgroundOpacity: parseFloat(template.episodeNumberBgOpacity || '0.8'),
+          showNavigation: template.showNavigation === 'true',
+          navigationPosition: template.navigationPosition || 'bottom-center',
+          navigationStyle: template.navigationStyle || 'arrows',
+        });
+
+        await updateEpisode(input.episodeId, { generatedArtworkUrl: artworkUrl });
+
+        return { success: true, artworkUrl };
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({
+        projectId: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, getProjectEpisodes, getProjectTemplate, updateEpisode } = await import('./db');
+        const { generateBatchArtwork } = await import('./utils/artworkGenerator');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        const template = await getProjectTemplate(input.projectId);
+        if (!template || !template.baseArtworkUrl) {
+          throw new Error('Template not configured');
+        }
+
+        const episodes = await getProjectEpisodes(input.projectId);
+        if (episodes.length === 0) {
+          throw new Error('No episodes found');
+        }
+
+        // Generate artwork for all episodes
+        const episodesWithNumbers = episodes
+          .filter(ep => ep.episodeNumber)
+          .map(ep => ({ id: ep.id, episodeNumber: ep.episodeNumber! }));
+
+        const results = await generateBatchArtwork(episodesWithNumbers, {
+          baseImageUrl: template.baseArtworkUrl,
+          numberPosition: template.episodeNumberPosition || 'top-right',
+          fontSize: parseInt(template.episodeNumberSize || '120'),
+          fontColor: template.episodeNumberColor || '#FFFFFF',
+          fontFamily: template.episodeNumberFont || 'Arial',
+          backgroundColor: template.episodeNumberBgColor || '#000000',
+          backgroundOpacity: parseFloat(template.episodeNumberBgOpacity || '0.8'),
+          showNavigation: template.showNavigation === 'true',
+          navigationPosition: template.navigationPosition || 'bottom-center',
+          navigationStyle: template.navigationStyle || 'arrows',
+        });
+
+        // Update episodes with generated artwork URLs
+        for (const [episodeId, artworkUrl] of Array.from(results.entries())) {
+          await updateEpisode(episodeId, { generatedArtworkUrl: artworkUrl });
+        }
+
+        return {
+          success: true,
+          generatedCount: results.size,
+        };
+      }),
+  }),
+
+  artworkBatch: artworkBatchRouter,
+  download: downloadRouter,
+});
+
+export type AppRouter = typeof appRouter;

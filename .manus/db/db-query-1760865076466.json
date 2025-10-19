@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE projects ADD COLUMN IF NOT EXISTS autoSync ENUM('enabled', 'disabled') DEFAULT 'enabled', ADD COLUMN IF NOT EXISTS lastSyncedAt TIMESTAMP NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2cDZh5cJCf6c2oY.root --database 2LFJbdDRQSMmb5B4RXiHaq --execute ALTER TABLE projects ADD COLUMN IF NOT EXISTS autoSync ENUM('enabled', 'disabled') DEFAULT 'enabled', ADD COLUMN IF NOT EXISTS lastSyncedAt TIMESTAMP NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 738
+}

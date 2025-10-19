@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO templates (id, projectId, name, baseArtworkUrl, showEpisodeNumber, episodeNumberPosition, episodeNumberFont, episodeNumberSize, episodeNumberColor, episodeNumberBgColor, episodeNumberBgOpacity, showNavigation, navigationPosition, navigationStyle, isActive) VALUES ('test-template-123', 'RT8M7Or6r-SIOLKesSYed', 'Default Template', 'file:///home/ubuntu/test-podcast-artwork.jpg', 'true', 'top-right', 'Arial', '120', '#FFFFFF', '#000000', '0.8', 'true', 'bottom-center', 'arrows', 'true')",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2cDZh5cJCf6c2oY.root --database 2LFJbdDRQSMmb5B4RXiHaq --execute INSERT INTO templates (id, projectId, name, baseArtworkUrl, showEpisodeNumber, episodeNumberPosition, episodeNumberFont, episodeNumberSize, episodeNumberColor, episodeNumberBgColor, episodeNumberBgOpacity, showNavigation, navigationPosition, navigationStyle, isActive) VALUES ('test-template-123', 'RT8M7Or6r-SIOLKesSYed', 'Default Template', 'file:///home/ubuntu/test-podcast-artwork.jpg', 'true', 'top-right', 'Arial', '120', '#FFFFFF', '#000000', '0.8', 'true', 'bottom-center', 'arrows', 'true')",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 243
+}
