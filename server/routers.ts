@@ -305,17 +305,27 @@ export const appRouter = router({
         
         let updatedCount = 0;
         
-        // Match episodes by GUID and update their numbers
+        // Match episodes by GUID and update their numbers and seasons
         for (const episode of episodes) {
           if (!episode.guid) continue;
           
           const feedEpisode = feed.episodes.find(ep => ep.guid === episode.guid);
-          if (feedEpisode && feedEpisode.episodeNumber) {
-            await updateEpisode(episode.id, { 
-              episodeNumber: feedEpisode.episodeNumber.toString() 
-            });
+          if (feedEpisode && (feedEpisode.episodeNumber || feedEpisode.seasonNumber)) {
+            const updateData: any = {};
+            
+            if (feedEpisode.episodeNumber) {
+              updateData.episodeNumber = feedEpisode.episodeNumber.toString();
+            }
+            
+            if (feedEpisode.seasonNumber) {
+              updateData.seasonNumber = feedEpisode.seasonNumber.toString();
+            }
+            
+            await updateEpisode(episode.id, updateData);
             updatedCount++;
-            console.log(`Fixed episode: ${episode.title} -> ${feedEpisode.episodeNumber}`);
+            
+            const seasonInfo = feedEpisode.seasonNumber ? `S${feedEpisode.seasonNumber}E${feedEpisode.episodeNumber}` : feedEpisode.episodeNumber;
+            console.log(`Fixed episode: ${episode.title} -> ${seasonInfo}`);
           }
         }
         

@@ -127,6 +127,16 @@ export default function ProjectDetail() {
     },
   });
 
+  const fixNumbersMutation = trpc.episodes.fixEpisodeNumbers.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.message || `Fixed ${result.updated} episode numbers from RSS feed`);
+      refetchEpisodes();
+    },
+    onError: (error) => {
+      toast.error(`Failed to fix episode numbers: ${error.message}`);
+    },
+  });
+
   const downloadZipMutation = trpc.download.generateZip.useMutation({
     onSuccess: (data) => {
       const byteCharacters = atob(data.data);
@@ -224,6 +234,7 @@ export default function ProjectDetail() {
             generationProgress={generationProgress}
             onImportRss={() => setShowImportDialog(true)}
             onAutoNumber={() => autoNumberMutation.mutate({ projectId: id! })}
+            onFixNumbers={() => fixNumbersMutation.mutate({ projectId: id! })}
             onGenerate={handleBatchGeneration}
             onDownload={() => downloadZipMutation.mutate({ projectId: id! })}
             onUpdateRss={() => setShowRSSFeedDialog(true)}
@@ -234,6 +245,7 @@ export default function ProjectDetail() {
             onNavigateToTemplate={() => navigate(`/project/${id}/template`)}
             autoNumberPending={autoNumberMutation.isPending}
             importRssPending={importRssMutation.isPending}
+            fixNumbersPending={fixNumbersMutation.isPending}
             downloadPending={downloadZipMutation.isPending}
           />
 

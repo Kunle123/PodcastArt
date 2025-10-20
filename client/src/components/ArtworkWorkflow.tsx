@@ -21,6 +21,7 @@ interface ArtworkWorkflowProps {
   };
   onImportRss: () => void;
   onAutoNumber: () => void;
+  onFixNumbers: () => void;
   onGenerate: () => void;
   onDownload: () => void;
   onUpdateRss: () => void;
@@ -28,6 +29,7 @@ interface ArtworkWorkflowProps {
   onNavigateToTemplate: () => void;
   autoNumberPending: boolean;
   importRssPending: boolean;
+  fixNumbersPending: boolean;
   downloadPending: boolean;
 }
 
@@ -41,6 +43,7 @@ export function ArtworkWorkflow({
   generationProgress,
   onImportRss,
   onAutoNumber,
+  onFixNumbers,
   onGenerate,
   onDownload,
   onUpdateRss,
@@ -48,6 +51,7 @@ export function ArtworkWorkflow({
   onNavigateToTemplate,
   autoNumberPending,
   importRssPending,
+  fixNumbersPending,
   downloadPending,
 }: ArtworkWorkflowProps) {
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
@@ -141,30 +145,48 @@ export function ArtworkWorkflow({
               First, import your podcast episodes from RSS and ensure they're numbered correctly.
             </p>
             
-            <div className="flex gap-3 flex-wrap">
-              <Button
-                variant="outline"
-                onClick={onImportRss}
-                disabled={importRssPending}
-              >
-                {importRssPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                <Upload className="mr-2 h-4 w-4" />
-                Import RSS Feed
-              </Button>
+                  <div className="flex gap-3 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={onImportRss}
+                      disabled={importRssPending}
+                    >
+                      {importRssPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import RSS Feed
+                    </Button>
 
-              <Button
-                variant="outline"
-                onClick={onAutoNumber}
-                disabled={episodes.length === 0 || autoNumberPending}
-              >
-                {autoNumberPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                # Auto-Number Episodes
-              </Button>
-            </div>
+                    <Button
+                      variant="outline"
+                      onClick={onFixNumbers}
+                      disabled={episodes.length === 0 || fixNumbersPending}
+                    >
+                      {fixNumbersPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      🔧 Fix Episode Numbers
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={onAutoNumber}
+                      disabled={episodes.length === 0 || autoNumberPending}
+                    >
+                      {autoNumberPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      # Auto-Number Episodes
+                    </Button>
+                  </div>
+                  
+                  {episodes.length > 0 && (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      <p><strong>Fix Episode Numbers:</strong> Re-sync from RSS feed (fixes wrong numbers like 10082)</p>
+                      <p><strong>Auto-Number:</strong> Assign sequential numbers (1, 2, 3...)</p>
+                    </div>
+                  )}
           </div>
 
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
@@ -209,13 +231,25 @@ export function ArtworkWorkflow({
           {/* Preview Sample */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-medium mb-3">Sample: Episode {episodes[0]?.episodeNumber || '1'}</h3>
+              <h3 className="font-medium mb-3">
+                Sample: {episodes[0]?.seasonNumber ? `S${episodes[0].seasonNumber}E${episodes[0].episodeNumber || '1'}` : `Episode ${episodes[0]?.episodeNumber || '1'}`}
+              </h3>
               <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
-                <img 
-                  src={template.baseArtworkUrl} 
-                  alt="Preview"
-                  className="w-full h-full object-contain"
-                />
+                {template.baseArtworkUrl ? (
+                  <img 
+                    src={template.baseArtworkUrl} 
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      console.error('Failed to load preview image:', template.baseArtworkUrl);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full text-muted-foreground">
+                    No artwork available
+                  </div>
+                )}
                 {/* Episode Number Overlay */}
                 <div 
                   className={`absolute flex items-center justify-center ${
