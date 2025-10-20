@@ -21,6 +21,9 @@ interface PodcastFeed {
 export async function parseRssFeed(feedUrl: string): Promise<PodcastFeed> {
   const parser = new Parser({
     customFields: {
+      feed: [
+        ['itunes:image', 'itunesImage'],
+      ],
       item: [
         ['itunes:episode', 'itunesEpisode'],
         ['itunes:season', 'itunesSeason'],
@@ -72,11 +75,26 @@ export async function parseRssFeed(feedUrl: string): Promise<PodcastFeed> {
 
   // Get podcast-level artwork
   let podcastArtwork = undefined;
-  if (feed.itunes?.image) {
+  
+  // Try multiple sources for podcast artwork
+  const feedAny = feed as any;
+  
+  if (feedAny.itunesImage) {
+    // Custom field: itunes:image at feed level
+    if (typeof feedAny.itunesImage === 'string') {
+      podcastArtwork = feedAny.itunesImage;
+    } else if (feedAny.itunesImage.$ && feedAny.itunesImage.$.href) {
+      podcastArtwork = feedAny.itunesImage.$.href;
+    }
+  } else if (feed.itunes?.image) {
+    // Standard itunes.image field
     podcastArtwork = feed.itunes.image;
   } else if (feed.image?.url) {
+    // Standard RSS image.url field
     podcastArtwork = feed.image.url;
   }
+  
+  console.log('[RSS Parser] Podcast artwork URL:', podcastArtwork || 'None found');
 
   return {
     title: feed.title || 'Untitled Podcast',
