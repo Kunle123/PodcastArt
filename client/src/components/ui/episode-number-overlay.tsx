@@ -56,12 +56,15 @@ export function EpisodeNumberOverlay({
     template.episodeNumberBgOpacity || '0.8'
   );
 
-  // Calculate responsive font size based on template setting
-  // Uses clamp for responsiveness while respecting user's size preference
+  // Use the exact font size from template settings
+  // The font size is already calibrated for artwork (typically 400-600px containers)
+  // Only scale down on very small screens to maintain readability
   const baseFontSize = parseInt(template.episodeNumberSize || '100');
-  const minSize = Math.max(16, Math.floor(baseFontSize * 0.2)); // Min: 20% of base or 16px
-  const maxSize = baseFontSize;
-  const responsiveFontSize = `clamp(${minSize}px, 8vw, ${maxSize}px)`;
+  const minSize = 16; // Absolute minimum for readability
+  
+  // Use max() to prefer the set pixel size, but scale down proportionally on tiny screens
+  // On a 400px wide container, 25% = 100px, so this scales well
+  const responsiveFontSize = `max(${minSize}px, min(${baseFontSize}px, 25vw))`;
 
   return (
     <div 
