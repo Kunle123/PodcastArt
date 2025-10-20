@@ -45,23 +45,37 @@ export default function TemplateEditor() {
 
   const handleSave = async (config: ArtworkConfig) => {
     try {
-      // Upload base artwork to S3
-      toast.info('Uploading base artwork...');
+      let artworkUrl = config.baseArtworkUrl;
       
-      const uploadResult = await uploadMutation.mutateAsync({
-        projectId,
-        fileData: config.baseArtworkUrl,
-        fileName: 'base-artwork.png',
-        mimeType: 'image/png',
-      });
+      // Only upload if it's a new image (data URL), not an existing URL
+      const isDataUrl = config.baseArtworkUrl.startsWith('data:');
+      const isExistingUrl = config.baseArtworkUrl.startsWith('http://') || config.baseArtworkUrl.startsWith('https://');
+      
+      if (isDataUrl) {
+        // Upload new artwork to Backblaze
+        toast.info('Uploading base artwork...');
+        
+        const uploadResult = await uploadMutation.mutateAsync({
+          projectId,
+          fileData: config.baseArtworkUrl,
+          fileName: 'base-artwork.png',
+          mimeType: 'image/png',
+        });
 
-      toast.success('Artwork uploaded successfully!');
+        toast.success('Artwork uploaded successfully!');
+        artworkUrl = uploadResult.url;
+      } else if (isExistingUrl) {
+        // Use existing artwork URL - no upload needed
+        toast.info('Saving template settings...');
+      } else {
+        throw new Error('Invalid artwork URL format');
+      }
 
-      // Save template with S3 URL and all customization options
+      // Save template with artwork URL and all customization options
       await saveTemplateMutation.mutateAsync({
         projectId,
         name: "Default Template",
-        baseArtworkUrl: uploadResult.url,
+        baseArtworkUrl: artworkUrl,
         showEpisodeNumber: config.showNavigation === 'true' ? 'true' : 'false',
         episodeNumberPosition: config.episodeNumberPosition,
         episodeNumberFont: config.episodeNumberFont,
