@@ -21,7 +21,6 @@ interface ArtworkWorkflowProps {
   };
   onImportRss: () => void;
   onAutoNumber: () => void;
-  onFixNumbers: () => void;
   onGenerate: () => void;
   onDownload: () => void;
   onUpdateRss: () => void;
@@ -29,7 +28,6 @@ interface ArtworkWorkflowProps {
   onNavigateToTemplate: () => void;
   autoNumberPending: boolean;
   importRssPending: boolean;
-  fixNumbersPending: boolean;
   downloadPending: boolean;
 }
 
@@ -43,7 +41,6 @@ export function ArtworkWorkflow({
   generationProgress,
   onImportRss,
   onAutoNumber,
-  onFixNumbers,
   onGenerate,
   onDownload,
   onUpdateRss,
@@ -51,7 +48,6 @@ export function ArtworkWorkflow({
   onNavigateToTemplate,
   autoNumberPending,
   importRssPending,
-  fixNumbersPending,
   downloadPending,
 }: ArtworkWorkflowProps) {
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
@@ -155,18 +151,7 @@ export function ArtworkWorkflow({
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       <Upload className="mr-2 h-4 w-4" />
-                      Import RSS Feed
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={onFixNumbers}
-                      disabled={episodes.length === 0 || fixNumbersPending}
-                    >
-                      {fixNumbersPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      🔧 Fix Episode Numbers
+                      {episodes.length > 0 ? 'Re-Import RSS Feed' : 'Import RSS Feed'}
                     </Button>
 
                     <Button
@@ -182,9 +167,12 @@ export function ArtworkWorkflow({
                   </div>
                   
                   {episodes.length > 0 && (
-                    <div className="mt-3 text-xs text-muted-foreground">
-                      <p><strong>Fix Episode Numbers:</strong> Re-sync from RSS feed (fixes wrong numbers like 10082)</p>
-                      <p><strong>Auto-Number:</strong> Assign sequential numbers (1, 2, 3...)</p>
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                      <p className="font-semibold text-blue-900 mb-1">💡 Pro Tip:</p>
+                      <p className="text-blue-800">
+                        If you see wrong episode numbers, re-import your RSS feed and check "Clear existing episodes". 
+                        This will fetch the correct numbers directly from your podcast feed.
+                      </p>
                     </div>
                   )}
           </div>

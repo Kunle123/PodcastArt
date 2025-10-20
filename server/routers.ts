@@ -219,11 +219,18 @@ export const appRouter = router({
       }),
 
     importRss: protectedProcedure
-      .input(z.object({ projectId: z.string(), rssUrl: z.string() }))
+      .input(z.object({ 
+        projectId: z.string(), 
+        rssUrl: z.string(),
+        clearExisting: z.boolean().optional().default(false)
+      }))
       .mutation(async ({ ctx, input }) => {
-        const { getProject, createEpisodes, getProjectTemplate, updateTemplate, updateProject } = await import('./db');
+        const { getProject, createEpisodes, getProjectTemplate, updateTemplate, updateProject, getProjectEpisodes } = await import('./db');
         const { parseRssFeed } = await import('./utils/rssParser');
         const { nanoid } = await import('nanoid');
+        const { getDb } = await import('./db');
+        const { episodes: episodesTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
         
         const project = await getProject(input.projectId);
         if (!project || project.userId !== ctx.user.id) {
@@ -238,21 +245,62 @@ export const appRouter = router({
           await updateTemplate(template.id, { baseArtworkUrl: parsedFeed.artworkUrl });
         }
         
-        const episodesToInsert = parsedFeed.episodes.map((ep: any) => ({
-          id: nanoid(),
-          projectId: input.projectId,
-          title: ep.title,
-          description: ep.description || null,
-          audioUrl: ep.audioUrl || null,
-          publishedAt: ep.publishedAt,
-          episodeNumber: ep.episodeNumber?.toString() || null,
-          seasonNumber: ep.seasonNumber?.toString() || null,
-          originalArtworkUrl: ep.artworkUrl || null,
-          generatedArtworkUrl: null,
-          guid: ep.guid || null,
-        }));
+        // Clear existing episodes if requested (or if this is a re-import)
+        const existingEpisodes = await getProjectEpisodes(input.projectId);
+        if (input.clearExisting && existingEpisodes.length > 0) {
+          const db = await getDb();
+          if (db) {
+            await db.delete(episodesTable).where(eq(episodesTable.projectId, input.projectId));
+            console.log(`Cleared ${existingEpisodes.length} existing episodes`);
+          }
+        }
+        
+        // Get existing GUIDs to avoid duplicates
+        const existingGuids = new Set(
+          input.clearExisting ? [] : existingEpisodes.filter(ep => ep.guid).map(ep => ep.guid!)
+        );
+        
+        // Filter out episodes that already exist (by GUID)
+        const newEpisodes = parsedFeed.episodes.filter(ep => !ep.guid || !existingGuids.has(ep.guid));
+        
+        console.log(`Importing ${newEpisodes.length} new episodes (${parsedFeed.episodes.length} total in feed, ${existingGuids.size} already imported)`);
+        
+        // Create episodes with correct numbers from RSS feed
+        const episodesToInsert = newEpisodes.map((ep: any, index: number) => {
+          // Use episode number from RSS feed, or assign sequential if missing
+          let episodeNumber = ep.episodeNumber?.toString() || null;
+          
+          // If no episode number in RSS, calculate a fallback
+          if (!episodeNumber) {
+            // Try to extract from title
+            const titleMatch = ep.title?.match(/(?:episode|ep\.?|#)\s*(\d+)/i);
+            if (titleMatch) {
+              episodeNumber = titleMatch[1];
+            } else {
+              // Use index + 1 as last resort
+              episodeNumber = (index + 1).toString();
+            }
+          }
+          
+          return {
+            id: nanoid(),
+            projectId: input.projectId,
+            title: ep.title,
+            description: ep.description || null,
+            audioUrl: ep.audioUrl || null,
+            publishedAt: ep.publishedAt,
+            episodeNumber,
+            seasonNumber: ep.seasonNumber?.toString() || null,
+            originalArtworkUrl: ep.artworkUrl || null,
+            generatedArtworkUrl: null,
+            guid: ep.guid || null,
+          };
+        });
 
-        await createEpisodes(episodesToInsert);
+        if (episodesToInsert.length > 0) {
+          await createEpisodes(episodesToInsert);
+          console.log(`Created ${episodesToInsert.length} episodes with episode numbers from RSS feed`);
+        }
         
         // Update project with podcast artwork AND RSS feed URL
         await updateProject(input.projectId, { 
@@ -260,7 +308,12 @@ export const appRouter = router({
           podcastArtworkUrl: parsedFeed.artworkUrl || null,
         });
         
-        return { success: true, count: episodesToInsert.length };
+        return { 
+          success: true, 
+          count: episodesToInsert.length,
+          total: parsedFeed.episodes.length,
+          skipped: parsedFeed.episodes.length - episodesToInsert.length
+        };
       }),
 
     autoNumber: protectedProcedure
