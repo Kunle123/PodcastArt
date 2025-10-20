@@ -47,12 +47,15 @@ export const appRouter = router({
             await db.execute(col.sql);
             results.push(`✅ templates.${col.name}`);
           } catch (error: any) {
-            const errorMsg = error.message || error.sqlMessage || String(error);
+            // Debug: log full error object structure
+            console.error(`[Migration] Error for ${col.name}:`, JSON.stringify(error, null, 2));
+            
+            const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
             if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
               results.push(`⏭️ templates.${col.name} already exists`);
             } else {
-              // Show full error for debugging
-              results.push(`❌ templates.${col.name}: ${errorMsg.substring(0, 200)}`);
+              // Show full error details
+              results.push(`❌ templates.${col.name}: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
             }
           }
         }
@@ -64,12 +67,15 @@ export const appRouter = router({
           );
           results.push(`✅ episodes.isBonus`);
         } catch (error: any) {
-          const errorMsg = error.message || error.sqlMessage || String(error);
+          // Debug: log full error object structure
+          console.error('[Migration] Error for isBonus:', JSON.stringify(error, null, 2));
+          
+          const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
           if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
             results.push(`⏭️ episodes.isBonus already exists`);
           } else {
-            // Show full error for debugging
-            results.push(`❌ episodes.isBonus: ${errorMsg.substring(0, 200)}`);
+            // Show full error details
+            results.push(`❌ episodes.isBonus: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
           }
         }
         
