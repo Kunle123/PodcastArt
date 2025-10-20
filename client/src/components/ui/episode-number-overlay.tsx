@@ -58,7 +58,7 @@ export function EpisodeNumberOverlay({
 
   // Calculate responsive font size based on template setting
   // Uses clamp for responsiveness while respecting user's size preference
-  const baseFontSize = parseInt(template.episodeNumberSize || '120');
+  const baseFontSize = parseInt(template.episodeNumberSize || '100');
   const minSize = Math.max(16, Math.floor(baseFontSize * 0.2)); // Min: 20% of base or 16px
   const maxSize = baseFontSize;
   const responsiveFontSize = `clamp(${minSize}px, 8vw, ${maxSize}px)`;

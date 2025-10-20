@@ -685,7 +685,7 @@ export const appRouter = router({
           isBonus: episode.isBonus === 'true',
           baseImageUrl: template.baseArtworkUrl,
           numberPosition: template.episodeNumberPosition || 'top-right',
-          fontSize: parseInt(template.episodeNumberSize || '120'),
+          fontSize: parseInt(template.episodeNumberSize || '100'),
           fontColor: template.episodeNumberColor || '#FFFFFF',
           fontFamily: template.episodeNumberFont || 'Arial',
           backgroundColor: template.episodeNumberBgColor || '#000000',
@@ -739,7 +739,7 @@ export const appRouter = router({
         const results = await generateBatchArtwork(episodesWithNumbers, {
           baseImageUrl: template.baseArtworkUrl,
           numberPosition: template.episodeNumberPosition || 'top-right',
-          fontSize: parseInt(template.episodeNumberSize || '120'),
+          fontSize: parseInt(template.episodeNumberSize || '100'),
           fontColor: template.episodeNumberColor || '#FFFFFF',
           fontFamily: template.episodeNumberFont || 'Arial',
           backgroundColor: template.episodeNumberBgColor || '#000000',

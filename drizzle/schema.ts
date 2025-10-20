@@ -76,7 +76,7 @@ export const templates = mysqlTable("templates", {
   customPositionX: varchar("customPositionX", { length: 32 }).default("0.25"), // For custom positioning (0-1 range)
   customPositionY: varchar("customPositionY", { length: 32 }).default("0.25"), // For custom positioning (0-1 range)
   episodeNumberFont: varchar("episodeNumberFont", { length: 128 }).default("Arial"),
-  episodeNumberSize: varchar("episodeNumberSize", { length: 16 }).default("120"),
+  episodeNumberSize: varchar("episodeNumberSize", { length: 16 }).default("100"),
   episodeNumberColor: varchar("episodeNumberColor", { length: 16 }).default("#FFFFFF"),
   episodeNumberBgColor: varchar("episodeNumberBgColor", { length: 16 }).default("#000000"),
   episodeNumberBgOpacity: varchar("episodeNumberBgOpacity", { length: 8 }).default("0.8"),

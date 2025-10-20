@@ -60,7 +60,7 @@ export const artworkBatchRouter = router({
                 episodeNumber: episode.episodeNumber?.toString() || '?',
                 isBonus: episode.isBonus === 'true',
                 numberPosition: template.episodeNumberPosition || 'top-right',
-                fontSize: parseInt(template.episodeNumberSize || '120'),
+                fontSize: parseInt(template.episodeNumberSize || '100'),
                 fontColor: template.episodeNumberColor || '#FFFFFF',
                 fontFamily: template.episodeNumberFont || 'Arial',
                 backgroundColor: template.episodeNumberBgColor || '#000000',

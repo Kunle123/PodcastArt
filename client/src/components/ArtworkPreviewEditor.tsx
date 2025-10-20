@@ -45,7 +45,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   
   // Configuration state - initialize from existing template if available
   const [position, setPosition] = useState(existingTemplate?.episodeNumberPosition || 'top-right');
-  const [fontSize, setFontSize] = useState(parseInt(existingTemplate?.episodeNumberSize || '120'));
+  const [fontSize, setFontSize] = useState(parseInt(existingTemplate?.episodeNumberSize || '100'));
   const [textColor, setTextColor] = useState(existingTemplate?.episodeNumberColor || '#FFFFFF');
   const [bgColor, setBgColor] = useState(existingTemplate?.episodeNumberBgColor || '#000000');
   const [bgOpacity, setBgOpacity] = useState(parseFloat(existingTemplate?.episodeNumberBgOpacity || '0.8'));
@@ -530,9 +530,12 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                 value={[fontSize]}
                 onValueChange={(value) => setFontSize(value[0])}
                 min={40}
-                max={200}
+                max={150}
                 step={10}
               />
+              <p className="text-xs text-muted-foreground">
+                Recommended: 80-120px. Higher values for short text like "Ep. 5"
+              </p>
             </div>
 
             {/* Text Color */}
