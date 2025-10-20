@@ -123,13 +123,33 @@ export default function Dashboard() {
             {projects.map((project) => (
               <Card
                 key={project.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
                 onClick={() => setLocation(`/project/${project.id}`)}
               >
+                {/* Podcast Artwork */}
+                <div className="aspect-square w-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center overflow-hidden">
+                  {project.podcastArtworkUrl ? (
+                    <img 
+                      src={project.podcastArtworkUrl} 
+                      alt={project.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Mic2 className="w-24 h-24 text-purple-300" />
+                  )}
+                </div>
+                
                 <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
+                  <CardTitle className="line-clamp-2">{project.name}</CardTitle>
                   <CardDescription>
-                    {project.platform ? `Platform: ${project.platform}` : "No platform configured"}
+                    {project.rssFeedUrl ? (
+                      <span className="flex items-center gap-1 text-green-600">
+                        <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                        RSS Connected
+                      </span>
+                    ) : (
+                      "No RSS feed"
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
