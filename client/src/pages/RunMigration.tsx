@@ -23,15 +23,30 @@ export default function RunMigration() {
       <Card className="max-w-2xl w-full p-8">
         <h1 className="text-3xl font-bold mb-4">🔧 Database Migration</h1>
         <p className="text-gray-600 mb-6">
-          This will add the new template customization fields to your database:
+          This will add the new template customization and bonus episode fields to your database:
         </p>
         
-        <ul className="list-disc list-inside mb-6 space-y-2 text-sm">
-          <li><code>borderRadius</code> - For rounded corners on episode numbers</li>
-          <li><code>labelFormat</code> - For "Ep. 1" vs "Episode 1" vs "1"</li>
-          <li><code>customPrefix</code> - For custom label prefix</li>
-          <li><code>customSuffix</code> - For custom label suffix</li>
-        </ul>
+        <div className="mb-6 space-y-4">
+          <div>
+            <h3 className="font-semibold text-sm mb-2">📋 Template Fields:</h3>
+            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+              <li><code>borderRadius</code> - For rounded corners on episode numbers</li>
+              <li><code>labelFormat</code> - For "Ep. 1" vs "Episode 1" vs "1"</li>
+              <li><code>customPrefix</code> - For custom label prefix</li>
+              <li><code>customSuffix</code> - For custom label suffix</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-sm mb-2">⭐ Bonus Episode Fields:</h3>
+            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+              <li><code>episodes.isBonus</code> - Flag to mark episodes as bonus</li>
+              <li><code>bonusNumberingMode</code> - How bonus episodes are numbered</li>
+              <li><code>bonusLabel</code> - Custom label for bonus episodes</li>
+              <li><code>bonusPrefix/Suffix</code> - Custom formatting for bonus labels</li>
+            </ul>
+          </div>
+        </div>
 
         <Button
           onClick={() => migrateMutation.mutate()}

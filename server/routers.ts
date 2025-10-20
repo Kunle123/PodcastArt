@@ -29,28 +29,48 @@ export const appRouter = router({
         }
 
         const results = [];
-        const columns = [
+        
+        // Template table columns
+        const templateColumns = [
           { name: 'borderRadius', type: "VARCHAR(16) DEFAULT '8'" },
           { name: 'labelFormat', type: "VARCHAR(16) DEFAULT 'number'" },
           { name: 'customPrefix', type: "VARCHAR(32) DEFAULT ''" },
           { name: 'customSuffix', type: "VARCHAR(32) DEFAULT ''" },
+          { name: 'bonusNumberingMode', type: "VARCHAR(16) DEFAULT 'included'" },
+          { name: 'bonusLabel', type: "VARCHAR(32) DEFAULT 'Bonus'" },
+          { name: 'bonusPrefix', type: "VARCHAR(32) DEFAULT ''" },
+          { name: 'bonusSuffix', type: "VARCHAR(32) DEFAULT ''" },
         ];
 
-        for (const col of columns) {
+        for (const col of templateColumns) {
           try {
             await db.execute(
               `ALTER TABLE templates ADD COLUMN ${col.name} ${col.type}`
             );
-            results.push(`✅ Added column: ${col.name}`);
+            results.push(`✅ templates.${col.name}`);
           } catch (error: any) {
             if (error.message.includes('Duplicate column')) {
-              results.push(`⏭️ Column ${col.name} already exists`);
+              results.push(`⏭️ templates.${col.name} already exists`);
             } else {
-              results.push(`❌ Error adding ${col.name}: ${error.message}`);
+              results.push(`❌ templates.${col.name}: ${error.message}`);
             }
           }
         }
-
+        
+        // Episodes table column
+        try {
+          await db.execute(
+            `ALTER TABLE episodes ADD COLUMN isBonus ENUM('true', 'false') DEFAULT 'false' NOT NULL`
+          );
+          results.push(`✅ episodes.isBonus`);
+        } catch (error: any) {
+          if (error.message.includes('Duplicate column')) {
+            results.push(`⏭️ episodes.isBonus already exists`);
+          } else {
+            results.push(`❌ episodes.isBonus: ${error.message}`);
+          }
+        }
+        
         return { success: true, results };
       }),
   }),
