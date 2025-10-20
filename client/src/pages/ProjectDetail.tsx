@@ -22,9 +22,13 @@ export default function ProjectDetail() {
   const { data: template } = trpc.templates.get.useQuery({ projectId: id! });
   const utils = trpc.useUtils();
 
+  // Check for step query param (e.g., ?step=preview)
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialStep = (urlParams.get('step') as WorkflowStep) || 'setup';
+
   // Workflow state
   type WorkflowStep = 'setup' | 'preview' | 'generate' | 'complete';
-  const [currentStep, setCurrentStep] = useState<WorkflowStep>('setup');
+  const [currentStep, setCurrentStep] = useState<WorkflowStep>(initialStep);
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
   
   // Client-side batch generation state

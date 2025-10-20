@@ -18,11 +18,11 @@ export default function TemplateEditor() {
   
   const saveTemplateMutation = trpc.templates.createOrUpdate.useMutation({
     onSuccess: () => {
-      toast.success("Template saved successfully!");
+      toast.success("Template saved! Redirecting to preview...");
       // Invalidate template query to refetch with new data
       utils.templates.get.invalidate({ projectId });
-      // Navigate back to project page
-      setLocation(`/project/${projectId}`);
+      // Navigate to project page with preview step
+      setLocation(`/project/${projectId}?step=preview`);
     },
     onError: (error: any) => {
       toast.error(`Failed to save template: ${error.message}`);
