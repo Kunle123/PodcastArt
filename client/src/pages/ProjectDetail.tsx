@@ -231,13 +231,13 @@ export default function ProjectDetail() {
 
       <div className="flex items-start gap-6 mb-6">
         {/* Podcast Artwork */}
-        {project.podcastArtworkUrl && (
+        {(template?.baseArtworkUrl || project.podcastArtworkUrl) && (
           <div className="flex-shrink-0">
             <div className="w-32 h-32 rounded-lg border-2 border-border overflow-hidden bg-muted">
               <img 
-                src={project.podcastArtworkUrl} 
+                src={template?.baseArtworkUrl || project.podcastArtworkUrl || ''} 
                 alt={project.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
@@ -252,7 +252,7 @@ export default function ProjectDetail() {
               RSS Feed: <span className="text-foreground font-mono text-xs">{project.rssFeedUrl}</span>
             </p>
           )}
-          {project.podcastArtworkUrl && (
+          {(template?.baseArtworkUrl || project.podcastArtworkUrl) && (
             <p className="text-xs text-muted-foreground mt-1">
               Base Artwork Loaded ✓
             </p>
@@ -413,34 +413,35 @@ export default function ProjectDetail() {
                   {/* Base Artwork with Preview */}
                   <div>
                     <h3 className="font-medium mb-2">Preview with Episode Number</h3>
-                    {template.baseArtworkUrl ? (
+                    {(template.baseArtworkUrl || project.podcastArtworkUrl) ? (
                       <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
                         <img 
-                          src={template.baseArtworkUrl} 
+                          src={template.baseArtworkUrl || project.podcastArtworkUrl || ''} 
                           alt="Base artwork"
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-cover"
                         />
                         {/* Episode Number Overlay Preview */}
                         <div 
                           className={`absolute flex items-center justify-center ${
-                            template.episodeNumberPosition === 'top-left' ? 'top-4 left-4' :
-                            template.episodeNumberPosition === 'top-right' ? 'top-4 right-4' :
-                            template.episodeNumberPosition === 'bottom-left' ? 'bottom-4 left-4' :
-                            template.episodeNumberPosition === 'bottom-right' ? 'bottom-4 right-4' :
+                            template.episodeNumberPosition === 'top-left' ? 'top-[5%] left-[5%]' :
+                            template.episodeNumberPosition === 'top-right' ? 'top-[5%] right-[5%]' :
+                            template.episodeNumberPosition === 'bottom-left' ? 'bottom-[5%] left-[5%]' :
+                            template.episodeNumberPosition === 'bottom-right' ? 'bottom-[5%] right-[5%]' :
                             'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
                           }`}
                         >
                           <div 
-                            className="px-3 py-2 rounded"
+                            className="px-[3%] py-[2%]"
                             style={{
                               backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
+                              borderRadius: `${template.borderRadius || '8'}px`,
                             }}
                           >
                             <span 
-                              className="font-bold"
+                              className="font-bold whitespace-nowrap"
                               style={{
                                 color: template.episodeNumberColor || '#FFFFFF',
-                                fontSize: `${Math.min(parseInt(template.episodeNumberSize || '120') / 4, 48)}px`
+                                fontSize: 'clamp(1rem, 5vw, 4rem)',
                               }}
                             >
                               42
