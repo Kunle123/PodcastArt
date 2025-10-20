@@ -36,10 +36,17 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   const [textColor, setTextColor] = useState(existingTemplate?.episodeNumberColor || '#FFFFFF');
   const [bgColor, setBgColor] = useState(existingTemplate?.episodeNumberBgColor || '#000000');
   const [bgOpacity, setBgOpacity] = useState(parseFloat(existingTemplate?.episodeNumberBgOpacity || '0.8'));
+  const [borderRadius, setBorderRadius] = useState(8); // New: border radius
+  const [labelFormat, setLabelFormat] = useState<'number' | 'ep' | 'episode'>('number'); // New: label format
   const [showNav, setShowNav] = useState(existingTemplate?.showNavigation === 'true' ? true : true);
   const [navPosition, setNavPosition] = useState(existingTemplate?.navigationPosition || 'bottom-center');
   const [navStyle, setNavStyle] = useState(existingTemplate?.navigationStyle || 'arrows');
   const [previewNumber, setPreviewNumber] = useState('42');
+  
+  // Draggable position (percentage of canvas size)
+  const [customX, setCustomX] = useState(0.9); // 90% from left (top-right default)
+  const [customY, setCustomY] = useState(0.1); // 10% from top
+  const [isDragging, setIsDragging] = useState(false);
   
   // Load existing template artwork on mount
   useEffect(() => {
@@ -124,43 +131,49 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     ctx.drawImage(baseImage, imgX, imgY, imgWidth, imgHeight);
 
     // Calculate position for episode number
-    const padding = 30; // Fixed padding for 600px canvas
+    // Use custom draggable position if position is 'custom', otherwise use preset
     let x = 0;
     let y = 0;
-    let textAlign: CanvasTextAlign = 'left';
-    let textBaseline: CanvasTextBaseline = 'top';
+    let textAlign: CanvasTextAlign = 'center';
+    let textBaseline: CanvasTextBaseline = 'middle';
 
-    switch (position) {
-      case 'top-left':
-        x = padding;
-        y = padding;
-        textAlign = 'left';
-        textBaseline = 'top';
-        break;
-      case 'top-right':
-        x = canvas.width - padding;
-        y = padding;
-        textAlign = 'right';
-        textBaseline = 'top';
-        break;
-      case 'bottom-left':
-        x = padding;
-        y = canvas.height - padding;
-        textAlign = 'left';
-        textBaseline = 'bottom';
-        break;
-      case 'bottom-right':
-        x = canvas.width - padding;
-        y = canvas.height - padding;
-        textAlign = 'right';
-        textBaseline = 'bottom';
-        break;
-      case 'center':
-        x = canvas.width / 2;
-        y = canvas.height / 2;
-        textAlign = 'center';
-        textBaseline = 'middle';
-        break;
+    if (position === 'custom') {
+      x = customX * canvas.width;
+      y = customY * canvas.height;
+    } else {
+      const padding = 30;
+      switch (position) {
+        case 'top-left':
+          x = padding;
+          y = padding;
+          textAlign = 'left';
+          textBaseline = 'top';
+          break;
+        case 'top-right':
+          x = canvas.width - padding;
+          y = padding;
+          textAlign = 'right';
+          textBaseline = 'top';
+          break;
+        case 'bottom-left':
+          x = padding;
+          y = canvas.height - padding;
+          textAlign = 'left';
+          textBaseline = 'bottom';
+          break;
+        case 'bottom-right':
+          x = canvas.width - padding;
+          y = canvas.height - padding;
+          textAlign = 'right';
+          textBaseline = 'bottom';
+          break;
+        case 'center':
+          x = canvas.width / 2;
+          y = canvas.height / 2;
+          textAlign = 'center';
+          textBaseline = 'middle';
+          break;
+      }
     }
 
     // Set font (scale to canvas size)
@@ -169,15 +182,22 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     ctx.textAlign = textAlign;
     ctx.textBaseline = textBaseline;
 
+    // Format the label based on selection
+    const displayText = labelFormat === 'ep' 
+      ? `Ep. ${previewNumber}`
+      : labelFormat === 'episode'
+      ? `Episode ${previewNumber}`
+      : previewNumber;
+
     // Measure text for background
-    const metrics = ctx.measureText(previewNumber);
+    const metrics = ctx.measureText(displayText);
     const textWidth = metrics.width;
     const textHeight = scaledFontSize;
 
-    // Draw background rectangle
+    // Draw background rectangle with rounded corners
     if (bgOpacity > 0) {
       const bgPadding = 15;
-      ctx.fillStyle = hexToRgba(bgColor, bgOpacity);
+      const scaledRadius = (borderRadius / size) * targetSize;
       
       let bgX = x;
       let bgY = y;
@@ -201,12 +221,16 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
         bgY = y - bgPadding;
       }
 
-      ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+      // Draw rounded rectangle
+      ctx.fillStyle = hexToRgba(bgColor, bgOpacity);
+      ctx.beginPath();
+      ctx.roundRect(bgX, bgY, bgWidth, bgHeight, scaledRadius);
+      ctx.fill();
     }
 
-    // Draw episode number
+    // Draw episode number with label
     ctx.fillStyle = textColor;
-    ctx.fillText(previewNumber, x, y);
+    ctx.fillText(displayText, x, y);
 
     // Draw navigation indicators if enabled
     if (showNav) {
@@ -228,7 +252,51 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       
       ctx.fillText(navText, navX, navY);
     }
-  }, [baseImage, position, fontSize, textColor, bgColor, bgOpacity, showNav, navPosition, navStyle, previewNumber]);
+  }, [baseImage, position, customX, customY, fontSize, textColor, bgColor, bgOpacity, borderRadius, labelFormat, showNav, navPosition, navStyle, previewNumber]);
+
+  // Mouse handlers for dragging
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (position !== 'custom') {
+      setPosition('custom');
+    }
+    setIsDragging(true);
+    handleCanvasMouseMove(e);
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    
+    if (isDragging || e.type === 'mousedown') {
+      setCustomX(Math.max(0, Math.min(1, x)));
+      setCustomY(Math.max(0, Math.min(1, y)));
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Color presets
+  const colorPresets = [
+    { name: 'Classic', text: '#FFFFFF', bg: '#000000' },
+    { name: 'Bold Red', text: '#FFFFFF', bg: '#DC2626' },
+    { name: 'Ocean Blue', text: '#FFFFFF', bg: '#2563EB' },
+    { name: 'Forest', text: '#FFFFFF', bg: '#16A34A' },
+    { name: 'Sunset', text: '#FFFFFF', bg: '#F59E0B' },
+    { name: 'Purple', text: '#FFFFFF', bg: '#9333EA' },
+    { name: 'Pink', text: '#FFFFFF', bg: '#EC4899' },
+    { name: 'Dark Slate', text: '#F1F5F9', bg: '#1E293B' },
+    { name: 'Light', text: '#1F2937', bg: '#F3F4F6' },
+  ];
+
+  const applyColorPreset = (preset: { text: string; bg: string }) => {
+    setTextColor(preset.text);
+    setBgColor(preset.bg);
+  };
 
   const handleSave = () => {
     if (!baseImageUrl) {
@@ -266,11 +334,18 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
             </div>
           ) : (
             <div className="flex flex-col items-center space-y-4">
-              <div className="aspect-square w-full max-w-md mx-auto">
+              <div className="aspect-square w-full max-w-md mx-auto relative">
                 <canvas
                   ref={canvasRef}
-                  className="border-2 border-gray-300 rounded-lg w-full h-full object-contain"
+                  className={`border-2 border-gray-300 rounded-lg w-full h-full object-contain ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseUp}
                 />
+                <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow">
+                  Click & Drag to Position
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Label>Preview Episode Number:</Label>
@@ -307,6 +382,40 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Episode Number Style</h3>
             
+            {/* Label Format */}
+            <div className="space-y-2">
+              <Label>Label Format</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={labelFormat === 'number' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setLabelFormat('number')}
+                  className="w-full"
+                >
+                  42
+                </Button>
+                <Button
+                  type="button"
+                  variant={labelFormat === 'ep' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setLabelFormat('ep')}
+                  className="w-full"
+                >
+                  Ep. 42
+                </Button>
+                <Button
+                  type="button"
+                  variant={labelFormat === 'episode' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setLabelFormat('episode')}
+                  className="w-full text-xs"
+                >
+                  Episode 42
+                </Button>
+              </div>
+            </div>
+
             {/* Position */}
             <div className="space-y-2">
               <Label>Position</Label>
@@ -315,6 +424,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="custom">Custom (Drag on Canvas)</SelectItem>
                   <SelectItem value="top-left">Top Left</SelectItem>
                   <SelectItem value="top-right">Top Right</SelectItem>
                   <SelectItem value="bottom-left">Bottom Left</SelectItem>
@@ -322,6 +432,11 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                   <SelectItem value="center">Center</SelectItem>
                 </SelectContent>
               </Select>
+              {position === 'custom' && (
+                <p className="text-xs text-muted-foreground">
+                  Click and drag on the canvas to position the number
+                </p>
+              )}
             </div>
 
             {/* Font Size */}
@@ -384,6 +499,51 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                 max={1}
                 step={0.1}
               />
+            </div>
+
+            {/* Border Radius */}
+            <div className="space-y-2">
+              <Label>Corner Rounding: {borderRadius}px</Label>
+              <Slider
+                value={[borderRadius]}
+                onValueChange={(value) => setBorderRadius(value[0])}
+                min={0}
+                max={40}
+                step={2}
+              />
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Square</span>
+                <span className="flex-1 text-right">Rounded</span>
+              </div>
+            </div>
+
+            {/* Color Presets */}
+            <div className="space-y-2">
+              <Label>Color Presets</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {colorPresets.map((preset) => (
+                  <Button
+                    key={preset.name}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyColorPreset(preset)}
+                    className="flex items-center gap-2 text-xs p-2 h-auto"
+                  >
+                    <div className="flex gap-1">
+                      <div 
+                        className="w-4 h-4 rounded border" 
+                        style={{ backgroundColor: preset.text }}
+                      />
+                      <div 
+                        className="w-4 h-4 rounded border" 
+                        style={{ backgroundColor: preset.bg }}
+                      />
+                    </div>
+                    <span className="flex-1 text-left">{preset.name}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
 
