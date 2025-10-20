@@ -208,8 +208,10 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       }
     }
 
-    // Set font (scale to canvas size)
-    const scaledFontSize = (fontSize / size) * targetSize;
+    // Scale font size relative to canvas size
+    // Assume fontSize is set for ~1500px standard artwork, scale to canvas (600px)
+    const standardArtworkSize = 1500; // Standard size fonts are designed for
+    const scaledFontSize = (fontSize / standardArtworkSize) * targetSize;
     ctx.font = `bold ${scaledFontSize}px Arial`;
     ctx.textAlign = textAlign;
     ctx.textBaseline = textBaseline;
@@ -231,7 +233,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     // Draw background rectangle with rounded corners
     if (bgOpacity > 0) {
       const bgPadding = 15;
-      const scaledRadius = (borderRadius / size) * targetSize;
+      const scaledRadius = (borderRadius / standardArtworkSize) * targetSize;
       
       let bgX = x;
       let bgY = y;
