@@ -30,29 +30,29 @@ export const appRouter = router({
 
         const results = [];
         
-        // Template table columns
+        // Template table columns - using proper MySQL syntax
         const templateColumns = [
-          { name: 'borderRadius', type: "VARCHAR(16) DEFAULT '8'" },
-          { name: 'labelFormat', type: "VARCHAR(16) DEFAULT 'number'" },
-          { name: 'customPrefix', type: "VARCHAR(32) DEFAULT ''" },
-          { name: 'customSuffix', type: "VARCHAR(32) DEFAULT ''" },
-          { name: 'bonusNumberingMode', type: "VARCHAR(16) DEFAULT 'included'" },
-          { name: 'bonusLabel', type: "VARCHAR(32) DEFAULT 'Bonus'" },
-          { name: 'bonusPrefix', type: "VARCHAR(32) DEFAULT ''" },
-          { name: 'bonusSuffix', type: "VARCHAR(32) DEFAULT ''" },
+          { name: 'borderRadius', sql: "ALTER TABLE templates ADD COLUMN borderRadius VARCHAR(16) DEFAULT '8'" },
+          { name: 'labelFormat', sql: "ALTER TABLE templates ADD COLUMN labelFormat VARCHAR(16) DEFAULT 'number'" },
+          { name: 'customPrefix', sql: "ALTER TABLE templates ADD COLUMN customPrefix VARCHAR(32) DEFAULT ''" },
+          { name: 'customSuffix', sql: "ALTER TABLE templates ADD COLUMN customSuffix VARCHAR(32) DEFAULT ''" },
+          { name: 'bonusNumberingMode', sql: "ALTER TABLE templates ADD COLUMN bonusNumberingMode VARCHAR(16) DEFAULT 'included'" },
+          { name: 'bonusLabel', sql: "ALTER TABLE templates ADD COLUMN bonusLabel VARCHAR(32) DEFAULT 'Bonus'" },
+          { name: 'bonusPrefix', sql: "ALTER TABLE templates ADD COLUMN bonusPrefix VARCHAR(32) DEFAULT ''" },
+          { name: 'bonusSuffix', sql: "ALTER TABLE templates ADD COLUMN bonusSuffix VARCHAR(32) DEFAULT ''" },
         ];
 
         for (const col of templateColumns) {
           try {
-            await db.execute(
-              `ALTER TABLE templates ADD COLUMN ${col.name} ${col.type}`
-            );
+            await db.execute(col.sql);
             results.push(`✅ templates.${col.name}`);
           } catch (error: any) {
-            if (error.message.includes('Duplicate column')) {
+            const errorMsg = error.message || error.sqlMessage || String(error);
+            if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
               results.push(`⏭️ templates.${col.name} already exists`);
             } else {
-              results.push(`❌ templates.${col.name}: ${error.message}`);
+              // Show full error for debugging
+              results.push(`❌ templates.${col.name}: ${errorMsg.substring(0, 200)}`);
             }
           }
         }
@@ -60,14 +60,16 @@ export const appRouter = router({
         // Episodes table column
         try {
           await db.execute(
-            `ALTER TABLE episodes ADD COLUMN isBonus ENUM('true', 'false') DEFAULT 'false' NOT NULL`
+            "ALTER TABLE episodes ADD COLUMN isBonus ENUM('true', 'false') NOT NULL DEFAULT 'false'"
           );
           results.push(`✅ episodes.isBonus`);
         } catch (error: any) {
-          if (error.message.includes('Duplicate column')) {
+          const errorMsg = error.message || error.sqlMessage || String(error);
+          if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
             results.push(`⏭️ episodes.isBonus already exists`);
           } else {
-            results.push(`❌ episodes.isBonus: ${error.message}`);
+            // Show full error for debugging
+            results.push(`❌ episodes.isBonus: ${errorMsg.substring(0, 200)}`);
           }
         }
         
