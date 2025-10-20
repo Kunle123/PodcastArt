@@ -353,18 +353,48 @@ export default function ProjectDetail() {
               <div className="space-y-6">
                 {/* Template Preview */}
                 <div className="grid md:grid-cols-2 gap-6">
-                  {/* Base Artwork */}
+                  {/* Base Artwork with Preview */}
                   <div>
-                    <h3 className="font-medium mb-2">Base Artwork</h3>
+                    <h3 className="font-medium mb-2">Preview with Episode Number</h3>
                     {template.baseArtworkUrl ? (
-                      <div className="relative aspect-square w-full">
+                      <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
                         <img 
                           src={template.baseArtworkUrl} 
                           alt="Base artwork"
-                          className="w-full h-full object-contain rounded-lg border-2 border-border bg-muted"
+                          className="w-full h-full object-contain"
                         />
+                        {/* Episode Number Overlay Preview */}
+                        <div 
+                          className={`absolute flex items-center justify-center ${
+                            template.episodeNumberPosition === 'top-left' ? 'top-4 left-4' :
+                            template.episodeNumberPosition === 'top-right' ? 'top-4 right-4' :
+                            template.episodeNumberPosition === 'bottom-left' ? 'bottom-4 left-4' :
+                            template.episodeNumberPosition === 'bottom-right' ? 'bottom-4 right-4' :
+                            'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+                          }`}
+                        >
+                          <div 
+                            className="px-3 py-2 rounded"
+                            style={{
+                              backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
+                            }}
+                          >
+                            <span 
+                              className="font-bold"
+                              style={{
+                                color: template.episodeNumberColor || '#FFFFFF',
+                                fontSize: `${Math.min(parseInt(template.episodeNumberSize || '120') / 4, 48)}px`
+                              }}
+                            >
+                              42
+                            </span>
+                          </div>
+                        </div>
                         <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg">
                           Active
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-lg">
+                          Preview
                         </div>
                       </div>
                     ) : (
@@ -372,6 +402,9 @@ export default function ProjectDetail() {
                         <p className="text-muted-foreground">No base artwork set</p>
                       </div>
                     )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      This shows how episode "42" would appear with your current settings
+                    </p>
                   </div>
 
                   {/* Template Settings */}

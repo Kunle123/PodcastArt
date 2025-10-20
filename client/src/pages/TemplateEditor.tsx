@@ -11,7 +11,9 @@ export default function TemplateEditor() {
   const projectId = params.id as string;
 
   const { data: projects } = trpc.projects.list.useQuery();
-  const project = projects?.find(p => p.id === projectId);
+  const { data: project } = trpc.projects.get.useQuery({ id: projectId });
+  const { data: template } = trpc.templates.get.useQuery({ projectId });
+  
   const saveTemplateMutation = trpc.templates.createOrUpdate.useMutation({
     onSuccess: () => {
       toast.success("Template saved successfully!");
@@ -77,7 +79,11 @@ export default function TemplateEditor() {
         </div>
 
         {/* Editor */}
-        <ArtworkPreviewEditor onSave={handleSave} />
+        <ArtworkPreviewEditor 
+          onSave={handleSave} 
+          existingTemplate={template}
+          projectArtworkUrl={project?.podcastArtworkUrl}
+        />
       </div>
     </div>
   );

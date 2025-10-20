@@ -8,6 +8,8 @@ import { Slider } from '@/components/ui/slider';
 
 interface ArtworkPreviewEditorProps {
   onSave: (config: ArtworkConfig) => void;
+  existingTemplate?: any;
+  projectArtworkUrl?: string | null;
 }
 
 export interface ArtworkConfig {
@@ -23,21 +25,35 @@ export interface ArtworkConfig {
   navigationStyle: string;
 }
 
-export default function ArtworkPreviewEditor({ onSave }: ArtworkPreviewEditorProps) {
+export default function ArtworkPreviewEditor({ onSave, existingTemplate, projectArtworkUrl }: ArtworkPreviewEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
   const [baseImageUrl, setBaseImageUrl] = useState<string>('');
   
-  // Configuration state
-  const [position, setPosition] = useState('top-right');
-  const [fontSize, setFontSize] = useState(120);
-  const [textColor, setTextColor] = useState('#FFFFFF');
-  const [bgColor, setBgColor] = useState('#000000');
-  const [bgOpacity, setBgOpacity] = useState(0.8);
-  const [showNav, setShowNav] = useState(true);
-  const [navPosition, setNavPosition] = useState('bottom-center');
-  const [navStyle, setNavStyle] = useState('arrows');
+  // Configuration state - initialize from existing template if available
+  const [position, setPosition] = useState(existingTemplate?.episodeNumberPosition || 'top-right');
+  const [fontSize, setFontSize] = useState(parseInt(existingTemplate?.episodeNumberSize || '120'));
+  const [textColor, setTextColor] = useState(existingTemplate?.episodeNumberColor || '#FFFFFF');
+  const [bgColor, setBgColor] = useState(existingTemplate?.episodeNumberBgColor || '#000000');
+  const [bgOpacity, setBgOpacity] = useState(parseFloat(existingTemplate?.episodeNumberBgOpacity || '0.8'));
+  const [showNav, setShowNav] = useState(existingTemplate?.showNavigation === 'true' ? true : true);
+  const [navPosition, setNavPosition] = useState(existingTemplate?.navigationPosition || 'bottom-center');
+  const [navStyle, setNavStyle] = useState(existingTemplate?.navigationStyle || 'arrows');
   const [previewNumber, setPreviewNumber] = useState('42');
+  
+  // Load existing template artwork on mount
+  useEffect(() => {
+    const artworkUrl = existingTemplate?.baseArtworkUrl || projectArtworkUrl;
+    if (artworkUrl && !baseImage) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        setBaseImage(img);
+        setBaseImageUrl(artworkUrl);
+      };
+      img.src = artworkUrl;
+    }
+  }, [existingTemplate, projectArtworkUrl, baseImage]);
 
   // Load base image when file is selected
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

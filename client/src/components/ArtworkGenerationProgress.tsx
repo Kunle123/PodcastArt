@@ -1,7 +1,9 @@
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 interface ArtworkGenerationProgressProps {
   total: number;
@@ -20,9 +22,15 @@ export function ArtworkGenerationProgress({
   onCancel,
   errors = [],
 }: ArtworkGenerationProgressProps) {
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const progress = Math.round(((completed + failed) / total) * 100);
   const remaining = total - completed - failed;
   const isComplete = completed + failed >= total;
+  
+  const handleCancel = () => {
+    onCancel?.();
+    setShowCancelDialog(false);
+  };
 
   return (
     <div className="space-y-4 p-6 border rounded-lg bg-card">
@@ -61,9 +69,33 @@ export function ArtworkGenerationProgress({
       </div>
 
       {isGenerating && onCancel && (
-        <Button variant="outline" onClick={onCancel} className="w-full">
-          Cancel Generation
-        </Button>
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full">
+              Cancel Generation
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Artwork Generation?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will stop generating artwork for the remaining {remaining} episode{remaining !== 1 ? 's' : ''}.
+                <br /><br />
+                <strong>Progress:</strong> {completed} of {total} episodes completed ({progress}%)
+                <br />
+                <strong>Remaining:</strong> {remaining} episode{remaining !== 1 ? 's' : ''}
+                <br /><br />
+                Episodes that have already been generated will be kept.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continue Generating</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCancel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Yes, Stop Generation
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {isComplete && (
