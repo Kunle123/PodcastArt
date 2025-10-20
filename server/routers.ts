@@ -17,6 +17,44 @@ export const appRouter = router({
   sync: syncRouter,
   rssFeed: rssFeedRouter,
 
+  // Database migration endpoint (temporary)
+  migrate: router({
+    addTemplateFields: publicProcedure
+      .mutation(async () => {
+        const { getDb } = await import('./db');
+        const db = await getDb();
+        
+        if (!db) {
+          throw new Error('Could not connect to database');
+        }
+
+        const results = [];
+        const columns = [
+          { name: 'borderRadius', type: "VARCHAR(16) DEFAULT '8'" },
+          { name: 'labelFormat', type: "VARCHAR(16) DEFAULT 'number'" },
+          { name: 'customPrefix', type: "VARCHAR(32) DEFAULT ''" },
+          { name: 'customSuffix', type: "VARCHAR(32) DEFAULT ''" },
+        ];
+
+        for (const col of columns) {
+          try {
+            await db.execute(
+              `ALTER TABLE templates ADD COLUMN ${col.name} ${col.type}`
+            );
+            results.push(`✅ Added column: ${col.name}`);
+          } catch (error: any) {
+            if (error.message.includes('Duplicate column')) {
+              results.push(`⏭️ Column ${col.name} already exists`);
+            } else {
+              results.push(`❌ Error adding ${col.name}: ${error.message}`);
+            }
+          }
+        }
+
+        return { success: true, results };
+      }),
+  }),
+
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

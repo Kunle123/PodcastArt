@@ -9,6 +9,7 @@ import TemplateEditor from "./pages/TemplateEditor";
 import Dashboard from "./pages/Dashboard";
 import ProjectDetail from "./pages/ProjectDetail";
 import Pricing from "./pages/Pricing";
+import RunMigration from "./pages/RunMigration";
 import { ClerkProvider } from "@clerk/clerk-react";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/project/:id/template" component={TemplateEditor} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/project/:id" component={ProjectDetail} />
+      <Route path="/migrate" component={RunMigration} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
