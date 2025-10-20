@@ -18,6 +18,7 @@ export default function ProjectDetail() {
 
   const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery({ id: id! });
   const { data: episodes, refetch: refetchEpisodes } = trpc.episodes.list.useQuery({ projectId: id! });
+  const { data: template } = trpc.templates.get.useQuery({ projectId: id! });
   const utils = trpc.useUtils();
 
   // Client-side batch generation state
@@ -35,6 +36,7 @@ export default function ProjectDetail() {
   const [cancelGeneration, setCancelGeneration] = useState(false);
 
   const generateSingleArtwork = trpc.artwork.generateSingle.useMutation();
+  const initializeTemplate = trpc.templates.initialize.useMutation();
 
   const handleBatchGeneration = async () => {
     if (!episodes || episodes.length === 0) {
@@ -166,8 +168,34 @@ export default function ProjectDetail() {
         </Button>
       </div>
 
-      <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
-      <p className="text-muted-foreground mb-6">Podcast Artwork Studio</p>
+      <div className="flex items-start gap-6 mb-6">
+        {/* Podcast Artwork */}
+        {project.podcastArtworkUrl && (
+          <div className="flex-shrink-0">
+            <img 
+              src={project.podcastArtworkUrl} 
+              alt={project.name}
+              className="w-32 h-32 rounded-lg border-2 border-border object-cover"
+            />
+          </div>
+        )}
+        
+        {/* Project Info */}
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
+          <p className="text-muted-foreground mb-2">Podcast Artwork Studio</p>
+          {project.rssFeedUrl && (
+            <p className="text-sm text-muted-foreground">
+              RSS Feed: <a href={project.rssFeedUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{project.rssFeedUrl}</a>
+            </p>
+          )}
+          {project.podcastArtworkUrl && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Base Artwork Loaded ✓
+            </p>
+          )}
+        </div>
+      </div>
 
       <Tabs defaultValue="episodes">
         <TabsList>
@@ -319,10 +347,126 @@ export default function ProjectDetail() {
               Customize how episode numbers and navigation indicators appear on your artwork
             </p>
 
-            <Button onClick={() => navigate(`/project/${id}/template`)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Open Visual Editor
-            </Button>
+            {template ? (
+              <div className="space-y-6">
+                {/* Template Preview */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Base Artwork */}
+                  <div>
+                    <h3 className="font-medium mb-2">Base Artwork</h3>
+                    {template.baseArtworkUrl ? (
+                      <div className="relative">
+                        <img 
+                          src={template.baseArtworkUrl} 
+                          alt="Base artwork"
+                          className="w-full rounded-lg border-2 border-border"
+                        />
+                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                          Active
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted">
+                        <p className="text-muted-foreground">No base artwork set</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Template Settings */}
+                  <div>
+                    <h3 className="font-medium mb-2">Current Settings</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Episode Number:</span>
+                        <span className="font-medium">{template.showEpisodeNumber === 'true' ? 'Enabled' : 'Disabled'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Position:</span>
+                        <span className="font-medium capitalize">{template.episodeNumberPosition?.replace('-', ' ')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Font Size:</span>
+                        <span className="font-medium">{template.episodeNumberSize}px</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Font Color:</span>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded border" 
+                            style={{ backgroundColor: template.episodeNumberColor || '#FFFFFF' }}
+                          />
+                          <span className="font-medium">{template.episodeNumberColor}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Background Color:</span>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded border" 
+                            style={{ backgroundColor: template.episodeNumberBgColor || '#000000' }}
+                          />
+                          <span className="font-medium">{template.episodeNumberBgColor}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Background Opacity:</span>
+                        <span className="font-medium">{(parseFloat(template.episodeNumberBgOpacity || '0.8') * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Navigation:</span>
+                        <span className="font-medium">{template.showNavigation === 'true' ? 'Enabled' : 'Disabled'}</span>
+                      </div>
+                      {template.showNavigation === 'true' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Nav Position:</span>
+                            <span className="font-medium capitalize">{template.navigationPosition?.replace('-', ' ')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Nav Style:</span>
+                            <span className="font-medium capitalize">{template.navigationStyle}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button onClick={() => navigate(`/project/${id}/template`)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Open Visual Editor
+                  </Button>
+                  {!template.baseArtworkUrl && project.podcastArtworkUrl && (
+                    <Button 
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await initializeTemplate.mutateAsync({ projectId: id! });
+                          toast.success("Template initialized with podcast artwork");
+                          utils.templates.get.invalidate();
+                        } catch (error: any) {
+                          toast.error(error.message);
+                        }
+                      }}
+                      disabled={initializeTemplate.isPending}
+                    >
+                      {initializeTemplate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Use Podcast Artwork
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">No template configured yet</p>
+                <Button onClick={() => navigate(`/project/${id}/template`)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Create Template
+                </Button>
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
