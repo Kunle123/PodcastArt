@@ -123,6 +123,8 @@ export default function ProjectDetail() {
       refetchEpisodes();
       // Refetch project to update RSS URL display
       utils.projects.get.invalidate({ id: id! });
+      // Refetch template to update artwork URL
+      utils.templates.get.invalidate({ projectId: id! });
     },
     onError: (error) => {
       toast.error(`Failed to import RSS feed: ${error.message}`);
