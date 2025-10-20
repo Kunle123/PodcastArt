@@ -283,6 +283,49 @@ export const appRouter = router({
         
         return { success: true, count: assignments.size };
       }),
+    
+    fixEpisodeNumbers: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, getProjectEpisodes, updateEpisode } = await import('./db');
+        const { parseRssFeed } = await import('./utils/rssParser');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+        
+        if (!project.rssFeedUrl) {
+          throw new Error('Project does not have an RSS feed URL');
+        }
+
+        // Parse RSS feed to get correct episode numbers
+        const feed = await parseRssFeed(project.rssFeedUrl);
+        const episodes = await getProjectEpisodes(input.projectId);
+        
+        let updatedCount = 0;
+        
+        // Match episodes by GUID and update their numbers
+        for (const episode of episodes) {
+          if (!episode.guid) continue;
+          
+          const feedEpisode = feed.episodes.find(ep => ep.guid === episode.guid);
+          if (feedEpisode && feedEpisode.episodeNumber) {
+            await updateEpisode(episode.id, { 
+              episodeNumber: feedEpisode.episodeNumber.toString() 
+            });
+            updatedCount++;
+            console.log(`Fixed episode: ${episode.title} -> ${feedEpisode.episodeNumber}`);
+          }
+        }
+        
+        return { 
+          success: true, 
+          updated: updatedCount,
+          total: episodes.length,
+          message: `Updated ${updatedCount} out of ${episodes.length} episodes`
+        };
+      }),
   }),
   // Templates router
   templates: router({

@@ -83,24 +83,30 @@ async function syncProject(project: any) {
 
     console.log(`[RSS Sync] Found ${newEpisodes.length} new episodes for project ${project.id}`);
 
-    // Determine next episode number
-    const maxEpisodeNumber = Math.max(
-      0,
-      ...existingEpisodes.map(ep => parseInt(ep.episodeNumber || '0', 10))
-    );
-
-    // Import new episodes
+    // Import new episodes with proper episode numbers from feed
     for (let i = 0; i < newEpisodes.length; i++) {
       const ep = newEpisodes[i];
       const episodeId = nanoid();
-      const episodeNumber = maxEpisodeNumber + i + 1;
+      
+      // Use episode number from feed if available, otherwise calculate
+      let episodeNumber: string;
+      if (ep.episodeNumber) {
+        episodeNumber = ep.episodeNumber.toString();
+      } else {
+        // Fallback: calculate from max existing episode number
+        const maxEpisodeNumber = Math.max(
+          0,
+          ...existingEpisodes.map(e => parseInt(e.episodeNumber || '0', 10))
+        );
+        episodeNumber = (maxEpisodeNumber + i + 1).toString();
+      }
 
       // Insert episode
       await db.insert(episodes).values({
         id: episodeId,
         projectId: project.id,
         title: ep.title,
-        episodeNumber: episodeNumber.toString(),
+        episodeNumber,
         seasonNumber: ep.seasonNumber ? ep.seasonNumber.toString() : null,
         description: ep.description || null,
         originalArtworkUrl: ep.artworkUrl || null,
