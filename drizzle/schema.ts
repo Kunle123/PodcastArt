@@ -73,8 +73,8 @@ export const templates = mysqlTable("templates", {
   // Episode number styling
   showEpisodeNumber: mysqlEnum("showEpisodeNumber", ["true", "false"]).default("true").notNull(),
   episodeNumberPosition: varchar("episodeNumberPosition", { length: 32 }).default("top-right"),
-  customPositionX: varchar("customPositionX", { length: 16 }).default("0.25"), // For custom positioning (0-1 range)
-  customPositionY: varchar("customPositionY", { length: 16 }).default("0.25"), // For custom positioning (0-1 range)
+  customPositionX: varchar("customPositionX", { length: 32 }).default("0.25"), // For custom positioning (0-1 range)
+  customPositionY: varchar("customPositionY", { length: 32 }).default("0.25"), // For custom positioning (0-1 range)
   episodeNumberFont: varchar("episodeNumberFont", { length: 128 }).default("Arial"),
   episodeNumberSize: varchar("episodeNumberSize", { length: 16 }).default("120"),
   episodeNumberColor: varchar("episodeNumberColor", { length: 16 }).default("#FFFFFF"),
