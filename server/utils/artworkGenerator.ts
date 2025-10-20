@@ -446,17 +446,3 @@ async function generateEpisodeArtworkWithBaseImage(options: ArtworkOptions, base
 
   return url;
 }
-
-function formatLabel(episodeNumber: string, format?: string, prefix?: string, suffix?: string): string {
-  switch (format) {
-    case 'ep':
-      return `Ep. ${episodeNumber}`;
-    case 'episode':
-      return `Episode ${episodeNumber}`;
-    case 'custom':
-      return `${prefix || ''}${episodeNumber}${suffix || ''}`;
-    default:
-      return episodeNumber;
-  }
-}
-
