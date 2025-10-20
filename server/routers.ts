@@ -299,6 +299,48 @@ export const appRouter = router({
         return getProjectTemplate(input.projectId);
       }),
 
+    // Initialize template for existing projects that don't have one
+    initialize: protectedProcedure
+      .input(z.object({ projectId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getProject, getProjectTemplate, createTemplate } = await import('./db');
+        const { nanoid } = await import('nanoid');
+        
+        const project = await getProject(input.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Project not found');
+        }
+
+        // Check if template already exists
+        const existingTemplate = await getProjectTemplate(input.projectId);
+        if (existingTemplate) {
+          return { success: true, message: 'Template already exists', templateId: existingTemplate.id };
+        }
+
+        // Create default template
+        const defaultTemplate = {
+          id: nanoid(),
+          projectId: input.projectId,
+          name: 'Default Template',
+          baseArtworkUrl: project.podcastArtworkUrl || null,
+          showEpisodeNumber: 'true' as const,
+          episodeNumberPosition: 'top-right',
+          episodeNumberFont: 'Arial',
+          episodeNumberSize: '120',
+          episodeNumberColor: '#FFFFFF',
+          episodeNumberBgColor: '#000000',
+          episodeNumberBgOpacity: '0.8',
+          showNavigation: 'true' as const,
+          navigationPosition: 'bottom-center',
+          navigationStyle: 'arrows',
+          isActive: 'true' as const,
+        };
+        
+        await createTemplate(defaultTemplate);
+        
+        return { success: true, message: 'Template initialized', templateId: defaultTemplate.id };
+      }),
+
     createOrUpdate: protectedProcedure
       .input(z.object({
         projectId: z.string(),
