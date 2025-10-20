@@ -151,7 +151,32 @@ export async function getEpisode(id: string) {
 export async function getProjectEpisodes(projectId: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(episodes).where(eq(episodes.projectId, projectId));
+  
+  // Get all episodes for the project
+  const allEpisodes = await db.select().from(episodes).where(eq(episodes.projectId, projectId));
+  
+  // Sort by episode number (descending - newest first), fallback to publish date
+  return allEpisodes.sort((a, b) => {
+    const aNum = parseInt(a.episodeNumber || '0', 10);
+    const bNum = parseInt(b.episodeNumber || '0', 10);
+    
+    // If both have episode numbers, sort by number (descending)
+    if (aNum > 0 && bNum > 0) {
+      return bNum - aNum;
+    }
+    
+    // If one has a number and the other doesn't, prioritize the one with a number
+    if (aNum > 0) return -1;
+    if (bNum > 0) return 1;
+    
+    // If neither has episode numbers, sort by publish date (newest first)
+    if (a.publishedAt && b.publishedAt) {
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    }
+    
+    // Fallback to creation order (by ID)
+    return 0;
+  });
 }
 
 export async function updateEpisode(id: string, data: Partial<InsertEpisode>) {
