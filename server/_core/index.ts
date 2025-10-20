@@ -33,6 +33,40 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  
+  // Public RSS Feed endpoint - serves generated RSS feed at /feed/{projectId}
+  app.get("/feed/:projectId", async (req, res) => {
+    try {
+      const { getProject, getProjectEpisodes } = await import('../db');
+      const { generateUpdatedRSSFeed } = await import('../utils/rssFeedGenerator');
+      
+      const projectId = req.params.projectId;
+      const project = await getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).send('Project not found');
+      }
+      
+      if (!project.rssFeedUrl) {
+        return res.status(400).send('Project does not have an RSS feed configured');
+      }
+      
+      // Get episodes
+      const episodes = await getProjectEpisodes(projectId);
+      
+      // Generate RSS feed
+      const { updatedXML } = await generateUpdatedRSSFeed(project.rssFeedUrl, episodes);
+      
+      // Serve as RSS XML
+      res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+      res.send(updatedXML);
+    } catch (error) {
+      console.error('[RSS Feed] Error serving feed:', error);
+      res.status(500).send('Error generating RSS feed');
+    }
+  });
+  
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
