@@ -352,10 +352,23 @@ export const appRouter = router({
 
         const parsedFeed = await parseRssFeed(input.rssUrl);
         
+        // Cache artwork in Backblaze if available
+        let cachedArtworkUrl = parsedFeed.artworkUrl;
+        if (parsedFeed.artworkUrl) {
+          const { cacheArtwork } = await import('./utils/artworkCache');
+          const backblazeUrl = await cacheArtwork(parsedFeed.artworkUrl, input.projectId);
+          if (backblazeUrl) {
+            cachedArtworkUrl = backblazeUrl;
+            console.log(`[Import] Artwork cached to Backblaze: ${backblazeUrl}`);
+          } else {
+            console.warn(`[Import] Failed to cache artwork, using original URL`);
+          }
+        }
+        
         // Update template with podcast artwork if available
         const template = await getProjectTemplate(input.projectId);
-        if (template && parsedFeed.artworkUrl && !template.baseArtworkUrl) {
-          await updateTemplate(template.id, { baseArtworkUrl: parsedFeed.artworkUrl });
+        if (template && cachedArtworkUrl && !template.baseArtworkUrl) {
+          await updateTemplate(template.id, { baseArtworkUrl: cachedArtworkUrl });
         }
         
         // Clear existing episodes if requested (or if this is a re-import)
@@ -424,10 +437,10 @@ export const appRouter = router({
         }
         
         // Update project with podcast artwork AND RSS feed URL
-        console.log(`[Import] Updating project ${input.projectId} with artwork URL: ${parsedFeed.artworkUrl}`);
+        console.log(`[Import] Updating project ${input.projectId} with artwork URL: ${cachedArtworkUrl}`);
         await updateProject(input.projectId, { 
           rssFeedUrl: input.rssUrl,
-          podcastArtworkUrl: parsedFeed.artworkUrl || null,
+          podcastArtworkUrl: cachedArtworkUrl || null,
         });
         console.log(`[Import] Project updated successfully`);
         
