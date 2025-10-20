@@ -125,6 +125,23 @@ export async function parseRssFeed(feedUrl: string): Promise<PodcastFeed> {
   
   console.log('[RSS Parser] Final artwork URL:', podcastArtwork || '❌ None found');
 
+  // Follow redirects for artwork URL to get the final URL
+  if (podcastArtwork) {
+    try {
+      const response = await fetch(podcastArtwork, { 
+        method: 'HEAD',
+        redirect: 'follow' 
+      });
+      if (response.ok && response.url !== podcastArtwork) {
+        console.log(`[RSS Parser] ✅ Followed redirect: ${podcastArtwork} → ${response.url}`);
+        podcastArtwork = response.url;
+      }
+    } catch (error) {
+      console.warn('[RSS Parser] Failed to check artwork URL redirect:', error);
+      // Continue with original URL if redirect check fails
+    }
+  }
+
   return {
     title: feed.title || 'Untitled Podcast',
     description: feed.description || undefined,
