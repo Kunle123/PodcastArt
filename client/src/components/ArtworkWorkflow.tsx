@@ -226,56 +226,57 @@ export function ArtworkWorkflow({
               </h3>
               <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
                 {(template.baseArtworkUrl || project?.podcastArtworkUrl) ? (
-                  <img 
-                    src={template.baseArtworkUrl || project?.podcastArtworkUrl || ''} 
-                    alt="Preview"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      console.error('Failed to load preview image:', template.baseArtworkUrl || project?.podcastArtworkUrl);
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    crossOrigin="anonymous"
-                  />
+                  <>
+                    <img 
+                      src={template.baseArtworkUrl || project?.podcastArtworkUrl || ''} 
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load preview image:', template.baseArtworkUrl || project?.podcastArtworkUrl);
+                      }}
+                    />
+                    {/* Episode Number Overlay */}
+                    <div 
+                      className={`absolute flex items-center justify-center ${
+                        template.episodeNumberPosition === 'top-left' ? 'top-[5%] left-[5%]' :
+                        template.episodeNumberPosition === 'top-right' ? 'top-[5%] right-[5%]' :
+                        template.episodeNumberPosition === 'bottom-left' ? 'bottom-[5%] left-[5%]' :
+                        template.episodeNumberPosition === 'bottom-right' ? 'bottom-[5%] right-[5%]' :
+                        template.episodeNumberPosition === 'custom' ? 'top-1/4 left-1/4' :
+                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+                      }`}
+                    >
+                      <div 
+                        className="px-[3%] py-[2%] rounded-lg"
+                        style={{
+                          backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
+                          borderRadius: `${template.borderRadius || '8'}px`,
+                        }}
+                      >
+                        <span 
+                          className="font-bold whitespace-nowrap"
+                          style={{
+                            color: template.episodeNumberColor || '#FFFFFF',
+                            fontSize: 'clamp(1rem, 5vw, 4rem)',
+                          }}
+                        >
+                          {template.labelFormat === 'ep' 
+                            ? `Ep. ${episodes[0]?.episodeNumber || '1'}`
+                            : template.labelFormat === 'episode'
+                            ? `Episode ${episodes[0]?.episodeNumber || '1'}`
+                            : template.labelFormat === 'custom'
+                            ? `${template.customPrefix || ''}${episodes[0]?.episodeNumber || '1'}${template.customSuffix || ''}`
+                            : episodes[0]?.episodeNumber || '1'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex items-center justify-center w-full h-full text-muted-foreground">
                     No artwork available - Please customize template to upload artwork
                   </div>
                 )}
-                {/* Episode Number Overlay */}
-                <div 
-                  className={`absolute flex items-center justify-center ${
-                    template.episodeNumberPosition === 'top-left' ? 'top-6 left-6 items-start justify-start' :
-                    template.episodeNumberPosition === 'top-right' ? 'top-6 right-6 items-start justify-end' :
-                    template.episodeNumberPosition === 'bottom-left' ? 'bottom-6 left-6 items-end justify-start' :
-                    template.episodeNumberPosition === 'bottom-right' ? 'bottom-6 right-6 items-end justify-end' :
-                    template.episodeNumberPosition === 'custom' ? 'top-1/4 left-1/4' :
-                    'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
-                  }`}
-                >
-                  <div 
-                    className="px-4 py-2 rounded-lg"
-                    style={{
-                      backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
-                    }}
-                  >
-                    <span 
-                      className="font-bold"
-                      style={{
-                        color: template.episodeNumberColor || '#FFFFFF',
-                        fontSize: `${Math.min(parseInt(template.episodeNumberSize || '120') / 3, 64)}px`
-                      }}
-                    >
-                      {template.labelFormat === 'ep' 
-                        ? `Ep. ${episodes[0]?.episodeNumber || '1'}`
-                        : template.labelFormat === 'episode'
-                        ? `Episode ${episodes[0]?.episodeNumber || '1'}`
-                        : template.labelFormat === 'custom'
-                        ? `${template.customPrefix || ''}${episodes[0]?.episodeNumber || '1'}${template.customSuffix || ''}`
-                        : episodes[0]?.episodeNumber || '1'
-                      }
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
