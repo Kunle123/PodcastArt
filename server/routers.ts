@@ -424,10 +424,16 @@ export const appRouter = router({
         }
         
         // Update project with podcast artwork AND RSS feed URL
+        console.log(`[Import] Updating project ${input.projectId} with artwork URL: ${parsedFeed.artworkUrl}`);
         await updateProject(input.projectId, { 
           rssFeedUrl: input.rssUrl,
           podcastArtworkUrl: parsedFeed.artworkUrl || null,
         });
+        console.log(`[Import] Project updated successfully`);
+        
+        // Verify the update
+        const updatedProject = await getProject(input.projectId);
+        console.log(`[Import] Verified project artwork URL: ${updatedProject?.podcastArtworkUrl}`);
         
         return { 
           success: true, 
