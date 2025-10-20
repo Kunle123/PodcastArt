@@ -155,14 +155,14 @@ export async function getProjectEpisodes(projectId: string) {
   // Get all episodes for the project
   const allEpisodes = await db.select().from(episodes).where(eq(episodes.projectId, projectId));
   
-  // Sort by episode number (descending - newest first), fallback to publish date
+  // Sort by episode number (descending - newest/highest first), fallback to publish date
   return allEpisodes.sort((a, b) => {
     const aNum = parseInt(a.episodeNumber || '0', 10);
     const bNum = parseInt(b.episodeNumber || '0', 10);
     
-    // If both have episode numbers, sort by number (descending)
+    // If both have episode numbers, sort by number (descending - higher number = newer)
     if (aNum > 0 && bNum > 0) {
-      return bNum - aNum;
+      return bNum - aNum; // 369 before 368, 2651 before 1
     }
     
     // If one has a number and the other doesn't, prioritize the one with a number

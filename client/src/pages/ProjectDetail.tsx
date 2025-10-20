@@ -22,13 +22,17 @@ export default function ProjectDetail() {
   const { data: template } = trpc.templates.get.useQuery({ projectId: id! });
   const utils = trpc.useUtils();
 
-  // Check for step query param (e.g., ?step=preview)
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialStep = (urlParams.get('step') as WorkflowStep) || 'setup';
-
   // Workflow state
   type WorkflowStep = 'setup' | 'preview' | 'generate' | 'complete';
-  const [currentStep, setCurrentStep] = useState<WorkflowStep>(initialStep);
+  const [currentStep, setCurrentStep] = useState<WorkflowStep>(() => {
+    // Check localStorage for saved workflow step
+    const saved = localStorage.getItem(`workflow-step-${id}`);
+    if (saved === 'preview' || saved === 'generate' || saved === 'complete') {
+      localStorage.removeItem(`workflow-step-${id}`); // Clear after reading
+      return saved as WorkflowStep;
+    }
+    return 'setup';
+  });
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
   
   // Client-side batch generation state
@@ -216,7 +220,7 @@ export default function ProjectDetail() {
           <p className="text-muted-foreground mb-2">Podcast Artwork Studio</p>
           {project.rssFeedUrl && (
             <p className="text-sm text-muted-foreground">
-              RSS Feed: <a href={project.rssFeedUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{project.rssFeedUrl}</a>
+              RSS Feed: <span className="text-foreground font-mono text-xs">{project.rssFeedUrl}</span>
             </p>
           )}
           {project.podcastArtworkUrl && (
@@ -238,6 +242,7 @@ export default function ProjectDetail() {
           <ArtworkWorkflow
             episodes={episodes || []}
             template={template}
+            project={project}
             projectId={id!}
             isGenerating={isGenerating}
             currentStep={currentStep}

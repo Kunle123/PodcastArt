@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, Upload, ArrowRight, Check, Download, Settings, ExternalLink } from "lucide-react";
@@ -9,6 +9,7 @@ export type WorkflowStep = 'setup' | 'preview' | 'generate' | 'complete';
 interface ArtworkWorkflowProps {
   episodes: any[];
   template: any;
+  project: any;
   projectId: string;
   isGenerating: boolean;
   currentStep: WorkflowStep;
@@ -31,166 +32,10 @@ interface ArtworkWorkflowProps {
   downloadPending: boolean;
 }
 
-// Canvas Preview Component - Shows actual rendering with all customizations
-function CanvasPreview({ template, episodeNumber }: { template: any; episodeNumber: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current || !template) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size (square)
-    canvas.width = 600;
-    canvas.height = 600;
-
-    // Fill background
-    ctx.fillStyle = '#f3f4f6';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Load and draw base image
-    if (template.baseArtworkUrl) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        // Draw image centered
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-        const x = (canvas.width - img.width * scale) / 2;
-        const y = (canvas.height - img.height * scale) / 2;
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-
-        // Draw episode number with ALL template settings
-        drawEpisodeNumber(ctx, canvas, template, episodeNumber);
-      };
-      img.onerror = () => {
-        console.error('Failed to load image:', template.baseArtworkUrl);
-        drawEpisodeNumber(ctx, canvas, template, episodeNumber);
-      };
-      img.src = template.baseArtworkUrl;
-    } else {
-      drawEpisodeNumber(ctx, canvas, template, episodeNumber);
-    }
-  }, [template, episodeNumber]);
-
-  return (
-    <canvas 
-      ref={canvasRef} 
-      className="w-full aspect-square border-2 border-border rounded-lg"
-    />
-  );
-}
-
-function drawEpisodeNumber(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, template: any, episodeNumber: string) {
-  const padding = 30;
-  const fontSize = parseInt(template.episodeNumberSize || '120');
-  const position = template.episodeNumberPosition || 'top-right';
-  
-  // Calculate position
-  let x = canvas.width / 2;
-  let y = canvas.height / 2;
-  let align: CanvasTextAlign = 'center';
-  let baseline: CanvasTextBaseline = 'middle';
-
-  switch (position) {
-    case 'top-left':
-      x = padding;
-      y = padding;
-      align = 'left';
-      baseline = 'top';
-      break;
-    case 'top-right':
-      x = canvas.width - padding;
-      y = padding;
-      align = 'right';
-      baseline = 'top';
-      break;
-    case 'bottom-left':
-      x = padding;
-      y = canvas.height - padding;
-      align = 'left';
-      baseline = 'bottom';
-      break;
-    case 'bottom-right':
-      x = canvas.width - padding;
-      y = canvas.height - padding;
-      align = 'right';
-      baseline = 'bottom';
-      break;
-  }
-
-  // Format the label based on template settings
-  const labelFormat = template.labelFormat || 'number';
-  const customPrefix = template.customPrefix || '';
-  const customSuffix = template.customSuffix || '';
-  
-  let displayText = episodeNumber;
-  if (labelFormat === 'ep') {
-    displayText = `Ep. ${episodeNumber}`;
-  } else if (labelFormat === 'episode') {
-    displayText = `Episode ${episodeNumber}`;
-  } else if (labelFormat === 'custom') {
-    displayText = `${customPrefix}${episodeNumber}${customSuffix}`;
-  }
-
-  // Set font
-  ctx.font = `bold ${fontSize}px Arial`;
-  ctx.textAlign = align;
-  ctx.textBaseline = baseline;
-
-  // Measure text
-  const metrics = ctx.measureText(displayText);
-  const textWidth = metrics.width;
-  const textHeight = fontSize;
-
-  // Draw background with rounded corners
-  const bgOpacity = parseFloat(template.episodeNumberBgOpacity || '0.8');
-  const borderRadius = parseInt(template.borderRadius || '8');
-  
-  if (bgOpacity > 0) {
-    const bgPadding = 15;
-    let bgX = x - bgPadding;
-    let bgY = y - bgPadding;
-    let bgWidth = textWidth + bgPadding * 2;
-    let bgHeight = textHeight + bgPadding * 2;
-
-    // Adjust for alignment
-    if (align === 'right') {
-      bgX = x - textWidth - bgPadding;
-    } else if (align === 'center') {
-      bgX = x - textWidth / 2 - bgPadding;
-    }
-
-    if (baseline === 'bottom') {
-      bgY = y - textHeight - bgPadding;
-    } else if (baseline === 'middle') {
-      bgY = y - textHeight / 2 - bgPadding;
-    }
-
-    // Draw rounded rectangle
-    const bgColor = template.episodeNumberBgColor || '#000000';
-    const r = bgColor.match(/\w\w/g);
-    if (r) {
-      const [red, green, blue] = r.map(x => parseInt(x, 16));
-      ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${bgOpacity})`;
-    } else {
-      ctx.fillStyle = bgColor;
-    }
-    
-    ctx.beginPath();
-    ctx.roundRect(bgX, bgY, bgWidth, bgHeight, borderRadius);
-    ctx.fill();
-  }
-
-  // Draw text
-  ctx.fillStyle = template.episodeNumberColor || '#FFFFFF';
-  ctx.fillText(displayText, x, y);
-}
-
 export function ArtworkWorkflow({
   episodes,
   template,
+  project,
   projectId,
   isGenerating,
   currentStep,
@@ -373,16 +218,65 @@ export function ArtworkWorkflow({
             </p>
           </div>
 
-          {/* Preview Sample - Using Canvas for accurate rendering */}
+          {/* Preview Sample */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <h3 className="font-medium mb-3">
                 Sample: {episodes[0]?.seasonNumber ? `S${episodes[0].seasonNumber}E${episodes[0].episodeNumber || '1'}` : `Episode ${episodes[0]?.episodeNumber || '1'}`}
               </h3>
-              <CanvasPreview 
-                template={template}
-                episodeNumber={episodes[0]?.episodeNumber || '1'}
-              />
+              <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
+                {(template.baseArtworkUrl || project?.podcastArtworkUrl) ? (
+                  <img 
+                    src={template.baseArtworkUrl || project?.podcastArtworkUrl || ''} 
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      console.error('Failed to load preview image:', template.baseArtworkUrl || project?.podcastArtworkUrl);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    crossOrigin="anonymous"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full text-muted-foreground">
+                    No artwork available - Please customize template to upload artwork
+                  </div>
+                )}
+                {/* Episode Number Overlay */}
+                <div 
+                  className={`absolute flex items-center justify-center ${
+                    template.episodeNumberPosition === 'top-left' ? 'top-6 left-6 items-start justify-start' :
+                    template.episodeNumberPosition === 'top-right' ? 'top-6 right-6 items-start justify-end' :
+                    template.episodeNumberPosition === 'bottom-left' ? 'bottom-6 left-6 items-end justify-start' :
+                    template.episodeNumberPosition === 'bottom-right' ? 'bottom-6 right-6 items-end justify-end' :
+                    template.episodeNumberPosition === 'custom' ? 'top-1/4 left-1/4' :
+                    'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+                  }`}
+                >
+                  <div 
+                    className="px-4 py-2 rounded-lg"
+                    style={{
+                      backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
+                    }}
+                  >
+                    <span 
+                      className="font-bold"
+                      style={{
+                        color: template.episodeNumberColor || '#FFFFFF',
+                        fontSize: `${Math.min(parseInt(template.episodeNumberSize || '120') / 3, 64)}px`
+                      }}
+                    >
+                      {template.labelFormat === 'ep' 
+                        ? `Ep. ${episodes[0]?.episodeNumber || '1'}`
+                        : template.labelFormat === 'episode'
+                        ? `Episode ${episodes[0]?.episodeNumber || '1'}`
+                        : template.labelFormat === 'custom'
+                        ? `${template.customPrefix || ''}${episodes[0]?.episodeNumber || '1'}${template.customSuffix || ''}`
+                        : episodes[0]?.episodeNumber || '1'
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">
