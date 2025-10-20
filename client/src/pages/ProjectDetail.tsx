@@ -368,6 +368,7 @@ export default function ProjectDetail() {
             open={showImportDialog}
             onOpenChange={setShowImportDialog}
             onImport={handleImportRss}
+            existingRssUrl={project.rssFeedUrl || undefined}
           />
 
           <RenumberEpisodesDialog

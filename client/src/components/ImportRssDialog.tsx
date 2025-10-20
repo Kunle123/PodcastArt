@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,14 +17,22 @@ interface ImportRssDialogProps {
   onOpenChange: (open: boolean) => void;
   onImport: (rssUrl: string, clearExisting?: boolean, useSequentialNumbers?: boolean, startNumber?: number) => Promise<void>;
   hasExistingEpisodes?: boolean;
+  existingRssUrl?: string;
 }
 
-export function ImportRssDialog({ open, onOpenChange, onImport }: ImportRssDialogProps) {
+export function ImportRssDialog({ open, onOpenChange, onImport, existingRssUrl }: ImportRssDialogProps) {
   const [rssUrl, setRssUrl] = useState("");
   const [clearExisting, setClearExisting] = useState(false);
   const [numberingMode, setNumberingMode] = useState<'rss' | 'sequential' | 'custom'>('rss');
   const [customStartNumber, setCustomStartNumber] = useState('1');
   const [isImporting, setIsImporting] = useState(false);
+
+  // Pre-fill RSS URL when dialog opens
+  useEffect(() => {
+    if (open && existingRssUrl) {
+      setRssUrl(existingRssUrl);
+    }
+  }, [open, existingRssUrl]);
 
   const handleImport = async () => {
     if (!rssUrl.trim()) return;
