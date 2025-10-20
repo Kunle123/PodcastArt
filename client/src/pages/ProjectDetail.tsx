@@ -111,6 +111,8 @@ export default function ProjectDetail() {
     onSuccess: () => {
       toast.success("RSS feed imported successfully");
       refetchEpisodes();
+      // Refetch project to update RSS URL display
+      utils.projects.get.invalidate({ id: id! });
     },
     onError: (error) => {
       toast.error(`Failed to import RSS feed: ${error.message}`);

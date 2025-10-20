@@ -254,8 +254,9 @@ export const appRouter = router({
 
         await createEpisodes(episodesToInsert);
         
-        // Update project with podcast artwork
+        // Update project with podcast artwork AND RSS feed URL
         await updateProject(input.projectId, { 
+          rssFeedUrl: input.rssUrl,
           podcastArtworkUrl: parsedFeed.artworkUrl || null,
         });
         
@@ -296,7 +297,7 @@ export const appRouter = router({
         }
         
         if (!project.rssFeedUrl) {
-          throw new Error('Project does not have an RSS feed URL');
+          throw new Error('Project does not have an RSS feed URL. Please import from RSS first using the "Import RSS Feed" button.');
         }
 
         // Parse RSS feed to get correct episode numbers
