@@ -13,6 +13,8 @@ import { RenumberEpisodesDialog } from "@/components/RenumberEpisodesDialog";
 import { ArtworkPreviewDialog } from "@/components/ArtworkPreviewDialog";
 import { RSSFeedUpdateDialog } from "@/components/RSSFeedUpdateDialog";
 import { GuidedUploadDialog } from "@/components/GuidedUploadDialog";
+import { EpisodeNumberOverlay } from "@/components/ui/episode-number-overlay";
+import { getArtworkUrl } from "@/lib/templateUtils";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -413,47 +415,17 @@ export default function ProjectDetail() {
                   {/* Base Artwork with Preview */}
                   <div>
                     <h3 className="font-medium mb-2">Preview with Episode Number</h3>
-                    {(template.baseArtworkUrl || project.podcastArtworkUrl) ? (
+                    {getArtworkUrl(template, project) ? (
                       <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
                         <img 
-                          src={template.baseArtworkUrl || project.podcastArtworkUrl || ''} 
+                          src={getArtworkUrl(template, project)} 
                           alt="Base artwork"
                           className="w-full h-full object-cover"
                         />
-                        {/* Episode Number Overlay Preview */}
-                        <div 
-                          className={`absolute flex items-center justify-center ${
-                            template.episodeNumberPosition === 'custom' ? '' : // Custom positioning uses inline styles
-                            template.episodeNumberPosition === 'top-left' ? 'top-[5%] left-[5%]' :
-                            template.episodeNumberPosition === 'top-right' ? 'top-[5%] right-[5%]' :
-                            template.episodeNumberPosition === 'bottom-left' ? 'bottom-[5%] left-[5%]' :
-                            template.episodeNumberPosition === 'bottom-right' ? 'bottom-[5%] right-[5%]' :
-                            'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
-                          }`}
-                          style={template.episodeNumberPosition === 'custom' ? {
-                            left: `${(parseFloat(template.customPositionX || '0.25')) * 100}%`,
-                            top: `${(parseFloat(template.customPositionY || '0.25')) * 100}%`,
-                            transform: 'translate(-50%, -50%)',
-                          } : undefined}
-                        >
-                          <div 
-                            className="px-[3%] py-[2%]"
-                            style={{
-                              backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
-                              borderRadius: `${template.borderRadius || '8'}px`,
-                            }}
-                          >
-                            <span 
-                              className="font-bold whitespace-nowrap"
-                              style={{
-                                color: template.episodeNumberColor || '#FFFFFF',
-                                fontSize: 'clamp(1rem, 5vw, 4rem)',
-                              }}
-                            >
-                              42
-                            </span>
-                          </div>
-                        </div>
+                        <EpisodeNumberOverlay
+                          episodeNumber={42}
+                          template={template}
+                        />
                         <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg">
                           Active
                         </div>

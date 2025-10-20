@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, Upload, ArrowRight, Check, Download, Settings, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { EpisodeNumberOverlay } from "@/components/ui/episode-number-overlay";
+import { getArtworkUrl } from "@/lib/templateUtils";
 
 export type WorkflowStep = 'setup' | 'preview' | 'generate' | 'complete';
 
@@ -225,57 +227,20 @@ export function ArtworkWorkflow({
                 Sample: {episodes[0]?.seasonNumber ? `S${episodes[0].seasonNumber}E${episodes[0].episodeNumber || '1'}` : `Episode ${episodes[0]?.episodeNumber || '1'}`}
               </h3>
               <div className="relative aspect-square w-full bg-muted rounded-lg border-2 border-border overflow-hidden">
-                {(template.baseArtworkUrl || project?.podcastArtworkUrl) ? (
+                {getArtworkUrl(template, project) ? (
                   <>
                     <img 
-                      src={template.baseArtworkUrl || project?.podcastArtworkUrl || ''} 
+                      src={getArtworkUrl(template, project)} 
                       alt="Preview"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.error('Failed to load preview image:', template.baseArtworkUrl || project?.podcastArtworkUrl);
+                        console.error('Failed to load preview image:', getArtworkUrl(template, project));
                       }}
                     />
-                    {/* Episode Number Overlay */}
-                    <div 
-                      className={`absolute flex items-center justify-center ${
-                        template.episodeNumberPosition === 'custom' ? '' : // Custom positioning uses inline styles
-                        template.episodeNumberPosition === 'top-left' ? 'top-[5%] left-[5%]' :
-                        template.episodeNumberPosition === 'top-right' ? 'top-[5%] right-[5%]' :
-                        template.episodeNumberPosition === 'bottom-left' ? 'bottom-[5%] left-[5%]' :
-                        template.episodeNumberPosition === 'bottom-right' ? 'bottom-[5%] right-[5%]' :
-                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
-                      }`}
-                      style={template.episodeNumberPosition === 'custom' ? {
-                        left: `${(parseFloat(template.customPositionX || '0.25')) * 100}%`,
-                        top: `${(parseFloat(template.customPositionY || '0.25')) * 100}%`,
-                        transform: 'translate(-50%, -50%)',
-                      } : undefined}
-                    >
-                      <div 
-                        className="px-[3%] py-[2%] rounded-lg"
-                        style={{
-                          backgroundColor: `${template.episodeNumberBgColor}${Math.round((parseFloat(template.episodeNumberBgOpacity || '0.8')) * 255).toString(16).padStart(2, '0')}`,
-                          borderRadius: `${template.borderRadius || '8'}px`,
-                        }}
-                      >
-                        <span 
-                          className="font-bold whitespace-nowrap"
-                          style={{
-                            color: template.episodeNumberColor || '#FFFFFF',
-                            fontSize: 'clamp(1rem, 5vw, 4rem)',
-                          }}
-                        >
-                          {template.labelFormat === 'ep' 
-                            ? `Ep. ${episodes[0]?.episodeNumber || '1'}`
-                            : template.labelFormat === 'episode'
-                            ? `Episode ${episodes[0]?.episodeNumber || '1'}`
-                            : template.labelFormat === 'custom'
-                            ? `${template.customPrefix || ''}${episodes[0]?.episodeNumber || '1'}${template.customSuffix || ''}`
-                            : episodes[0]?.episodeNumber || '1'
-                          }
-                        </span>
-                      </div>
-                    </div>
+                    <EpisodeNumberOverlay
+                      episodeNumber={episodes[0]?.episodeNumber || '1'}
+                      template={template}
+                    />
                   </>
                 ) : (
                   <div className="flex items-center justify-center w-full h-full text-muted-foreground">
