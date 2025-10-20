@@ -161,15 +161,18 @@ export default function ProjectDetail() {
     },
   });
 
-  const handleImportRss = async (rssUrl: string, clearExisting: boolean = false, useSequentialNumbers: boolean = false) => {
+  const handleImportRss = async (rssUrl: string, clearExisting: boolean = false, useSequentialNumbers: boolean = false, startNumber: number = 1) => {
     const result = await importRssMutation.mutateAsync({ 
       projectId: id!, 
       rssUrl,
       clearExisting,
-      useSequentialNumbers
+      useSequentialNumbers,
+      startNumber
     });
     
-    const numberingType = useSequentialNumbers ? 'sequential numbers (1, 2, 3...)' : 'RSS feed numbers';
+    const numberingType = useSequentialNumbers 
+      ? `sequential numbers starting at ${startNumber}` 
+      : 'RSS feed numbers';
     
     if (result.skipped && result.skipped > 0) {
       toast.info(`Imported ${result.count} new episodes with ${numberingType}. ${result.skipped} episodes were already imported (skipped duplicates).`);

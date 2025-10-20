@@ -261,7 +261,8 @@ export const appRouter = router({
         projectId: z.string(), 
         rssUrl: z.string(),
         clearExisting: z.boolean().optional().default(false),
-        useSequentialNumbers: z.boolean().optional().default(false)
+        useSequentialNumbers: z.boolean().optional().default(false),
+        startNumber: z.number().optional().default(1)
       }))
       .mutation(async ({ ctx, input }) => {
         const { getProject, createEpisodes, getProjectTemplate, updateTemplate, updateProject, getProjectEpisodes } = await import('./db');
@@ -309,8 +310,8 @@ export const appRouter = router({
           let episodeNumber: string;
           
           if (input.useSequentialNumbers) {
-            // User wants sequential numbering (1, 2, 3...), ignore RSS feed numbers
-            episodeNumber = (index + 1).toString();
+            // User wants sequential numbering starting from their chosen number
+            episodeNumber = (input.startNumber + index).toString();
           } else {
             // Use episode number from RSS feed
             episodeNumber = ep.episodeNumber?.toString() || null;
