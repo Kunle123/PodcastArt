@@ -1,18 +1,18 @@
 import { z } from 'zod';
 import { protectedProcedure, router } from '../_core/trpc';
-import { generateEpisodeArtwork } from '../utils/artworkGenerator';
+import { generateBatchArtwork } from '../utils/artworkGenerator';
 import { getProjectEpisodes, updateEpisode, getProjectTemplate } from '../db';
 
 export const artworkBatchRouter = router({
   /**
-   * Generate artwork for multiple episodes in batches
-   * Returns progress updates as it processes
+   * Generate artwork for multiple episodes in optimized batches
+   * Downloads base artwork ONCE, then processes 10 episodes at a time in parallel
    */
   generateBatch: protectedProcedure
     .input(z.object({
       projectId: z.string(),
       episodeIds: z.array(z.string()).optional(), // If not provided, generate for all episodes
-      batchSize: z.number().default(10), // Process 10 episodes at a time
+      batchSize: z.number().default(10), // Process 10 episodes at a time in parallel
     }))
     .mutation(async ({ input }) => {
       const { projectId, episodeIds, batchSize } = input;
@@ -35,7 +35,7 @@ export const artworkBatchRouter = router({
       // Get template for this project
       const template = await getProjectTemplate(projectId);
 
-      if (!template) {
+      if (!template || !template.baseArtworkUrl) {
         return {
           success: false,
           message: 'No template configured for this project',
@@ -44,78 +44,68 @@ export const artworkBatchRouter = router({
         };
       }
 
-      // Process episodes in batches
-      let processed = 0;
-      const errors: Array<{ episodeId: string; error: string }> = [];
+      // Prepare episode data for batch generation
+      const episodesWithNumbers = episodesToProcess
+        .filter((ep: any) => ep.episodeNumber)
+        .map((ep: any) => ({ 
+          id: ep.id, 
+          episodeNumber: ep.episodeNumber.toString(),
+          isBonus: ep.isBonus === 'true'
+        }));
 
-      for (let i = 0; i < episodesToProcess.length; i += batchSize) {
-        const batch = episodesToProcess.slice(i, i + batchSize);
+      // Generate all artwork in optimized batches
+      // This downloads base artwork ONCE and processes in parallel batches
+      console.log(`[Batch Router] Starting optimized batch generation for ${episodesWithNumbers.length} episodes`);
+      
+      const artworkResults = await generateBatchArtwork(
+        episodesWithNumbers,
+        {
+          baseImageUrl: template.baseArtworkUrl,
+          episodeNumber: '', // Will be overridden per episode
+          isBonus: false, // Will be overridden per episode
+          numberPosition: template.episodeNumberPosition || 'top-right',
+          fontSize: parseInt(template.episodeNumberSize || '100'),
+          fontColor: template.episodeNumberColor || '#FFFFFF',
+          fontFamily: template.episodeNumberFont || 'Arial',
+          backgroundColor: template.episodeNumberBgColor || '#000000',
+          backgroundOpacity: parseFloat(template.episodeNumberBgOpacity || '0.8'),
+          labelFormat: template.labelFormat || 'number',
+          customPrefix: template.customPrefix || '',
+          customSuffix: template.customSuffix || '',
+          borderRadius: parseInt(template.borderRadius || '8'),
+          bonusNumberingMode: template.bonusNumberingMode || 'included',
+          bonusLabel: template.bonusLabel || 'Bonus',
+          bonusPrefix: template.bonusPrefix || '',
+          bonusSuffix: template.bonusSuffix || '',
+          showNavigation: template.showNavigation === 'true',
+          navigationPosition: template.navigationPosition || 'bottom-center',
+          navigationStyle: template.navigationStyle || 'arrows',
+        },
+        batchSize
+      );
 
-        // Process batch in parallel
-        const results = await Promise.allSettled(
-          batch.map(async (episode: any) => {
-            try {
-              const artworkUrl = await generateEpisodeArtwork({
-                baseImageUrl: template.baseArtworkUrl || '',
-                episodeNumber: episode.episodeNumber?.toString() || '?',
-                isBonus: episode.isBonus === 'true',
-                numberPosition: template.episodeNumberPosition || 'top-right',
-                fontSize: parseInt(template.episodeNumberSize || '100'),
-                fontColor: template.episodeNumberColor || '#FFFFFF',
-                fontFamily: template.episodeNumberFont || 'Arial',
-                backgroundColor: template.episodeNumberBgColor || '#000000',
-                backgroundOpacity: parseFloat(template.episodeNumberBgOpacity || '0.8'),
-                labelFormat: template.labelFormat || 'number',
-                customPrefix: template.customPrefix || '',
-                customSuffix: template.customSuffix || '',
-                borderRadius: parseInt(template.borderRadius || '8'),
-                bonusNumberingMode: template.bonusNumberingMode || 'included',
-                bonusLabel: template.bonusLabel || 'Bonus',
-                bonusPrefix: template.bonusPrefix || '',
-                bonusSuffix: template.bonusSuffix || '',
-                showNavigation: template.showNavigation === 'true',
-                navigationPosition: template.navigationPosition || 'bottom-center',
-                navigationStyle: template.navigationStyle || 'arrows',
-              });
+      // Update all episodes with their generated artwork URLs in parallel
+      console.log(`[Batch Router] Updating ${artworkResults.size} episodes with generated artwork URLs`);
+      
+      const updatePromises = Array.from(artworkResults.entries()).map(([episodeId, artworkUrl]) =>
+        updateEpisode(episodeId, { generatedArtworkUrl: artworkUrl }).catch(err => {
+          console.error(`Failed to update episode ${episodeId}:`, err);
+          return null;
+        })
+      );
 
-              // Update episode with generated artwork URL
-              await updateEpisode(episode.id, { generatedArtworkUrl: artworkUrl });
+      await Promise.all(updatePromises);
 
-              return { success: true, episodeId: episode.id };
-            } catch (error) {
-              console.error(`Error generating artwork for episode ${episode.id}:`, error);
-              return {
-                success: false,
-                episodeId: episode.id,
-                error: error instanceof Error ? error.message : 'Unknown error',
-              };
-            }
-          })
-        );
+      const processed = artworkResults.size;
+      const failed = episodesWithNumbers.length - processed;
 
-        // Count successes and failures
-        results.forEach((result: any) => {
-          if (result.status === 'fulfilled' && result.value.success) {
-            processed++;
-          } else if (result.status === 'fulfilled' && !result.value.success) {
-            errors.push({
-              episodeId: result.value.episodeId,
-              error: result.value.error || 'Unknown error',
-            });
-          } else if (result.status === 'rejected') {
-            errors.push({
-              episodeId: 'unknown',
-              error: result.reason?.message || 'Unknown error',
-            });
-          }
-        });
-      }
+      console.log(`[Batch Router] Complete! ${processed} succeeded, ${failed} failed`);
 
       return {
         success: true,
         processed,
         total: episodesToProcess.length,
-        errors: errors.length > 0 ? errors : undefined,
+        failed,
       };
     }),
 
@@ -139,4 +129,3 @@ export const artworkBatchRouter = router({
       };
     }),
 });
-

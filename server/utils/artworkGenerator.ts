@@ -252,22 +252,211 @@ function hexToRgba(hex: string, opacity: number): string {
 
 export async function generateBatchArtwork(
   episodes: Array<{ id: string; episodeNumber: string }>,
-  templateOptions: Omit<ArtworkOptions, 'episodeNumber'>
+  templateOptions: Omit<ArtworkOptions, 'episodeNumber'>,
+  batchSize: number = 10
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
 
-  for (const episode of episodes) {
-    try {
-      const artworkUrl = await generateEpisodeArtwork({
-        ...templateOptions,
-        episodeNumber: episode.episodeNumber,
-      });
-      results.set(episode.id, artworkUrl);
-    } catch (error) {
-      console.error(`Failed to generate artwork for episode ${episode.id}:`, error);
-    }
+  // Download base artwork ONCE for all episodes (huge performance improvement!)
+  console.log('[Batch Artwork] Loading base artwork once for all episodes...');
+  const baseImage = await loadImage(templateOptions.baseImageUrl);
+  console.log(`[Batch Artwork] Base artwork loaded: ${baseImage.width}x${baseImage.height}px`);
+  console.log(`[Batch Artwork] Processing ${episodes.length} episodes in batches of ${batchSize}...`);
+
+  // Process episodes in parallel batches
+  for (let i = 0; i < episodes.length; i += batchSize) {
+    const batch = episodes.slice(i, i + batchSize);
+    const batchNumber = Math.floor(i / batchSize) + 1;
+    const totalBatches = Math.ceil(episodes.length / batchSize);
+    
+    console.log(`[Batch Artwork] Processing batch ${batchNumber}/${totalBatches} (${batch.length} episodes)`);
+
+    // Process all episodes in this batch in parallel
+    const batchPromises = batch.map(async (episode) => {
+      try {
+        const artworkUrl = await generateEpisodeArtworkWithBaseImage({
+          ...templateOptions,
+          episodeNumber: episode.episodeNumber,
+        }, baseImage);
+        return { id: episode.id, url: artworkUrl, success: true };
+      } catch (error) {
+        console.error(`Failed to generate artwork for episode ${episode.id}:`, error);
+        return { id: episode.id, url: null, success: false };
+      }
+    });
+
+    // Wait for entire batch to complete
+    const batchResults = await Promise.all(batchPromises);
+    
+    // Store successful results
+    batchResults.forEach(result => {
+      if (result.success && result.url) {
+        results.set(result.id, result.url);
+      }
+    });
+
+    console.log(`[Batch Artwork] Batch ${batchNumber}/${totalBatches} complete (${results.size}/${episodes.length} total)`);
   }
 
+  console.log(`[Batch Artwork] All done! Generated ${results.size}/${episodes.length} artworks`);
   return results;
+}
+
+// Internal function that accepts a pre-loaded base image to avoid re-downloading
+async function generateEpisodeArtworkWithBaseImage(options: ArtworkOptions, baseImage: any): Promise<string> {
+  const {
+    episodeNumber,
+    isBonus,
+    numberPosition,
+    fontSize,
+    fontColor,
+    fontFamily,
+    backgroundColor,
+    backgroundOpacity,
+    labelFormat,
+    customPrefix,
+    customSuffix,
+    borderRadius,
+    bonusNumberingMode,
+    bonusLabel,
+    bonusPrefix,
+    bonusSuffix,
+    showNavigation,
+    navigationPosition,
+    navigationStyle,
+  } = options;
+
+  // Create canvas with same dimensions as base image
+  const canvas = createCanvas(baseImage.width, baseImage.height);
+  const ctx = canvas.getContext('2d');
+
+  // Draw base image (already loaded, no download!)
+  ctx.drawImage(baseImage, 0, 0);
+
+  // Calculate position for episode number
+  const padding = 40;
+  let x = 0;
+  let y = 0;
+  let textAlign: CanvasTextAlign = 'left';
+  let textBaseline: CanvasTextBaseline = 'top';
+
+  switch (numberPosition) {
+    case 'top-left':
+      x = padding;
+      y = padding;
+      textAlign = 'left';
+      textBaseline = 'top';
+      break;
+    case 'top-right':
+      x = canvas.width - padding;
+      y = padding;
+      textAlign = 'right';
+      textBaseline = 'top';
+      break;
+    case 'bottom-left':
+      x = padding;
+      y = canvas.height - padding;
+      textAlign = 'left';
+      textBaseline = 'bottom';
+      break;
+    case 'bottom-right':
+      x = canvas.width - padding;
+      y = canvas.height - padding;
+      textAlign = 'right';
+      textBaseline = 'bottom';
+      break;
+    case 'center':
+      x = canvas.width / 2;
+      y = canvas.height / 2;
+      textAlign = 'center';
+      textBaseline = 'middle';
+      break;
+  }
+
+  // Generate label text based on bonus status and configuration
+  let labelText = '';
+  
+  if (isBonus) {
+    // Bonus episode labeling
+    if (bonusNumberingMode === 'none') {
+      labelText = bonusLabel || 'Bonus';
+    } else if (bonusNumberingMode === 'separate') {
+      labelText = `${bonusPrefix}${bonusLabel || 'Bonus'} ${episodeNumber}${bonusSuffix}`;
+    } else { // 'included'
+      labelText = formatLabel(episodeNumber, labelFormat, customPrefix, customSuffix);
+    }
+  } else {
+    labelText = formatLabel(episodeNumber, labelFormat, customPrefix, customSuffix);
+  }
+
+  // Set font and styling
+  ctx.font = `bold ${fontSize}px ${fontFamily}`;
+  ctx.textAlign = textAlign;
+  ctx.textBaseline = textBaseline;
+
+  // Measure text for background
+  const metrics = ctx.measureText(labelText);
+  const textWidth = metrics.width;
+  const textHeight = fontSize;
+
+  // Draw background rectangle with rounded corners
+  if (backgroundOpacity > 0) {
+    const bgPadding = 15;
+    
+    let bgX = x;
+    let bgY = y;
+    let bgWidth = textWidth + bgPadding * 2;
+    let bgHeight = textHeight + bgPadding * 2;
+
+    // Adjust background position based on text alignment
+    if (textAlign === 'center') {
+      bgX = x - bgWidth / 2;
+    } else if (textAlign === 'right') {
+      bgX = x - bgWidth;
+    }
+
+    if (textBaseline === 'middle') {
+      bgY = y - bgHeight / 2;
+    } else if (textBaseline === 'bottom') {
+      bgY = y - bgHeight;
+    }
+
+    // Draw rounded rectangle
+    ctx.fillStyle = hexToRgba(backgroundColor, backgroundOpacity);
+    ctx.beginPath();
+    ctx.roundRect(bgX, bgY, bgWidth, bgHeight, borderRadius);
+    ctx.fill();
+  }
+
+  // Draw episode number/label
+  ctx.fillStyle = fontColor;
+  ctx.fillText(labelText, x, y);
+
+  // Draw navigation indicators if enabled
+  if (showNavigation) {
+    drawNavigationIndicators(ctx, canvas.width, canvas.height, navigationPosition, navigationStyle, fontColor);
+  }
+
+  // Convert canvas to buffer
+  const buffer = canvas.toBuffer('image/png');
+
+  // Upload to S3
+  const filename = `artwork/episode-${episodeNumber}-${Date.now()}.png`;
+  const { url } = await backblazeStoragePut(filename, buffer, 'image/png');
+
+  return url;
+}
+
+function formatLabel(episodeNumber: string, format?: string, prefix?: string, suffix?: string): string {
+  switch (format) {
+    case 'ep':
+      return `Ep. ${episodeNumber}`;
+    case 'episode':
+      return `Episode ${episodeNumber}`;
+    case 'custom':
+      return `${prefix || ''}${episodeNumber}${suffix || ''}`;
+    default:
+      return episodeNumber;
+  }
 }
 

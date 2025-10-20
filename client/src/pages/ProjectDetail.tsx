@@ -55,6 +55,7 @@ export default function ProjectDetail() {
   const cancelGenerationRef = useRef(false);
 
   const generateSingleArtwork = trpc.artwork.generateSingle.useMutation();
+  const generateBatchArtwork = trpc.artworkBatch.generateBatch.useMutation();
   const initializeTemplate = trpc.templates.initialize.useMutation();
 
   const handleBatchGeneration = async () => {
@@ -76,33 +77,49 @@ export default function ProjectDetail() {
     let completed = 0;
     let failed = 0;
     const errors: string[] = [];
+    const batchSize = 10;
 
-    // Process episodes one at a time so cancel is more responsive
-    for (let i = 0; i < episodes.length; i++) {
-      // Check cancel flag before each episode
+    // Process episodes in batches of 10 (much faster!)
+    // Base artwork is downloaded ONCE per batch, not per episode
+    for (let i = 0; i < episodes.length; i += batchSize) {
+      // Check cancel flag before each batch
       if (cancelGenerationRef.current) {
         toast.info(`Generation cancelled. Completed ${completed} of ${episodes.length} episodes.`);
         break;
       }
 
-      const episode = episodes[i];
+      const batch = episodes.slice(i, i + batchSize);
+      const batchIds = batch.map(ep => ep.id);
 
       try {
-        await generateSingleArtwork.mutateAsync({ episodeId: episode.id });
-        completed++;
+        const result = await generateBatchArtwork.mutateAsync({ 
+          projectId: id!,
+          episodeIds: batchIds,
+          batchSize 
+        });
+        
+        completed += result.processed || 0;
+        failed += result.failed || 0;
+        
+        // Update progress after each batch
+        setGenerationProgress({
+          total: episodes.length,
+          completed,
+          failed,
+          errors,
+        });
       } catch (error: any) {
-        failed++;
-        const episodeName = episode.title || `Episode ${i + 1}`;
-        errors.push(`${episodeName}: ${error.message || "Unknown error"}`);
+        // If entire batch fails, count all episodes as failed
+        failed += batch.length;
+        errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${error.message || "Unknown error"}`);
+        
+        setGenerationProgress({
+          total: episodes.length,
+          completed,
+          failed,
+          errors,
+        });
       }
-
-      // Update progress after each episode
-      setGenerationProgress({
-        total: episodes.length,
-        completed,
-        failed,
-        errors,
-      });
     }
 
     setIsGenerating(false);
@@ -111,7 +128,7 @@ export default function ProjectDetail() {
     if (cancelGenerationRef.current) {
       toast.info(`Generation stopped. ${completed} artworks created, ${episodes.length - completed - failed} skipped.`);
     } else if (failed === 0) {
-      toast.success(`Successfully generated ${completed} artworks!`);
+      toast.success(`Successfully generated ${completed} artworks! 🎉`);
       setCurrentStep('complete');
     } else {
       toast.warning(`Generated ${completed} artworks, ${failed} failed`);
