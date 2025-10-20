@@ -142,12 +142,12 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     let y = 0;
     let textAlign: CanvasTextAlign = 'center';
     let textBaseline: CanvasTextBaseline = 'middle';
+    const padding = 30; // Define padding at function scope
 
     if (position === 'custom') {
       x = customX * canvas.width;
       y = customY * canvas.height;
     } else {
-      const padding = 30;
       switch (position) {
         case 'top-left':
           x = padding;
