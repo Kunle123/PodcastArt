@@ -21,65 +21,81 @@ export const appRouter = router({
   migrate: router({
     addTemplateFields: publicProcedure
       .mutation(async () => {
-        const { getDb } = await import('./db');
-        const db = await getDb();
+        // Import mysql2 directly for raw SQL execution
+        const mysql = await import('mysql2/promise');
         
-        if (!db) {
-          throw new Error('Could not connect to database');
+        if (!process.env.DATABASE_URL) {
+          throw new Error('DATABASE_URL not configured');
         }
 
+        let connection;
         const results = [];
         
-        // Template table columns - using proper MySQL syntax
-        const templateColumns = [
-          { name: 'borderRadius', sql: "ALTER TABLE templates ADD COLUMN borderRadius VARCHAR(16) DEFAULT '8'" },
-          { name: 'labelFormat', sql: "ALTER TABLE templates ADD COLUMN labelFormat VARCHAR(16) DEFAULT 'number'" },
-          { name: 'customPrefix', sql: "ALTER TABLE templates ADD COLUMN customPrefix VARCHAR(32) DEFAULT ''" },
-          { name: 'customSuffix', sql: "ALTER TABLE templates ADD COLUMN customSuffix VARCHAR(32) DEFAULT ''" },
-          { name: 'bonusNumberingMode', sql: "ALTER TABLE templates ADD COLUMN bonusNumberingMode VARCHAR(16) DEFAULT 'included'" },
-          { name: 'bonusLabel', sql: "ALTER TABLE templates ADD COLUMN bonusLabel VARCHAR(32) DEFAULT 'Bonus'" },
-          { name: 'bonusPrefix', sql: "ALTER TABLE templates ADD COLUMN bonusPrefix VARCHAR(32) DEFAULT ''" },
-          { name: 'bonusSuffix', sql: "ALTER TABLE templates ADD COLUMN bonusSuffix VARCHAR(32) DEFAULT ''" },
-        ];
+        try {
+          // Create direct mysql2 connection
+          connection = await mysql.createConnection(process.env.DATABASE_URL);
+          console.log('[Migration] Database connection established');
+          
+          // Template table columns - using proper MySQL syntax
+          const templateColumns = [
+            { name: 'borderRadius', sql: "ALTER TABLE templates ADD COLUMN borderRadius VARCHAR(16) DEFAULT '8'" },
+            { name: 'labelFormat', sql: "ALTER TABLE templates ADD COLUMN labelFormat VARCHAR(16) DEFAULT 'number'" },
+            { name: 'customPrefix', sql: "ALTER TABLE templates ADD COLUMN customPrefix VARCHAR(32) DEFAULT ''" },
+            { name: 'customSuffix', sql: "ALTER TABLE templates ADD COLUMN customSuffix VARCHAR(32) DEFAULT ''" },
+            { name: 'bonusNumberingMode', sql: "ALTER TABLE templates ADD COLUMN bonusNumberingMode VARCHAR(16) DEFAULT 'included'" },
+            { name: 'bonusLabel', sql: "ALTER TABLE templates ADD COLUMN bonusLabel VARCHAR(32) DEFAULT 'Bonus'" },
+            { name: 'bonusPrefix', sql: "ALTER TABLE templates ADD COLUMN bonusPrefix VARCHAR(32) DEFAULT ''" },
+            { name: 'bonusSuffix', sql: "ALTER TABLE templates ADD COLUMN bonusSuffix VARCHAR(32) DEFAULT ''" },
+          ];
 
-        for (const col of templateColumns) {
+          for (const col of templateColumns) {
+            try {
+              await connection.execute(col.sql);
+              results.push(`✅ templates.${col.name}`);
+            } catch (error: any) {
+              // Debug: log full error object structure
+              console.error(`[Migration] Error for ${col.name}:`, error);
+              
+              const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
+              if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
+                results.push(`⏭️ templates.${col.name} already exists`);
+              } else {
+                // Show full error details
+                results.push(`❌ templates.${col.name}: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
+              }
+            }
+          }
+          
+          // Episodes table column
           try {
-            await db.execute(col.sql);
-            results.push(`✅ templates.${col.name}`);
+            await connection.execute(
+              "ALTER TABLE episodes ADD COLUMN isBonus ENUM('true', 'false') NOT NULL DEFAULT 'false'"
+            );
+            results.push(`✅ episodes.isBonus`);
           } catch (error: any) {
             // Debug: log full error object structure
-            console.error(`[Migration] Error for ${col.name}:`, JSON.stringify(error, null, 2));
+            console.error('[Migration] Error for isBonus:', error);
             
             const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
             if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
-              results.push(`⏭️ templates.${col.name} already exists`);
+              results.push(`⏭️ episodes.isBonus already exists`);
             } else {
               // Show full error details
-              results.push(`❌ templates.${col.name}: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
+              results.push(`❌ episodes.isBonus: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
             }
           }
-        }
-        
-        // Episodes table column
-        try {
-          await db.execute(
-            "ALTER TABLE episodes ADD COLUMN isBonus ENUM('true', 'false') NOT NULL DEFAULT 'false'"
-          );
-          results.push(`✅ episodes.isBonus`);
-        } catch (error: any) {
-          // Debug: log full error object structure
-          console.error('[Migration] Error for isBonus:', JSON.stringify(error, null, 2));
           
-          const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
-          if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
-            results.push(`⏭️ episodes.isBonus already exists`);
-          } else {
-            // Show full error details
-            results.push(`❌ episodes.isBonus: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
+          return { success: true, results };
+        } catch (error: any) {
+          console.error('[Migration] Fatal error:', error);
+          throw new Error(`Migration failed: ${error.message}`);
+        } finally {
+          // Always close the connection
+          if (connection) {
+            await connection.end();
+            console.log('[Migration] Database connection closed');
           }
         }
-        
-        return { success: true, results };
       }),
   }),
 
