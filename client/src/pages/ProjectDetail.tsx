@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export default function ProjectDetail() {
     errors: [] as string[],
   });
   const [cancelGeneration, setCancelGeneration] = useState(false);
+  const cancelGenerationRef = useRef(false);
 
   const generateSingleArtwork = trpc.artwork.generateSingle.useMutation();
   const initializeTemplate = trpc.templates.initialize.useMutation();
@@ -46,6 +47,7 @@ export default function ProjectDetail() {
 
     setIsGenerating(true);
     setCancelGeneration(false);
+    cancelGenerationRef.current = false;
     setGenerationProgress({
       total: episodes.length,
       completed: 0,
@@ -53,35 +55,30 @@ export default function ProjectDetail() {
       errors: [],
     });
 
-    const BATCH_SIZE = 5; // Process 5 episodes at a time
     let completed = 0;
     let failed = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < episodes.length; i += BATCH_SIZE) {
-      if (cancelGeneration) {
-        toast.info("Generation cancelled");
+    // Process episodes one at a time so cancel is more responsive
+    for (let i = 0; i < episodes.length; i++) {
+      // Check cancel flag before each episode
+      if (cancelGenerationRef.current) {
+        toast.info(`Generation cancelled. Completed ${completed} of ${episodes.length} episodes.`);
         break;
       }
 
-      const batch = episodes.slice(i, i + BATCH_SIZE);
+      const episode = episodes[i];
 
-      const results = await Promise.allSettled(
-        batch.map((episode) =>
-          generateSingleArtwork.mutateAsync({ episodeId: episode.id })
-        )
-      );
+      try {
+        await generateSingleArtwork.mutateAsync({ episodeId: episode.id });
+        completed++;
+      } catch (error: any) {
+        failed++;
+        const episodeName = episode.title || `Episode ${i + 1}`;
+        errors.push(`${episodeName}: ${error.message || "Unknown error"}`);
+      }
 
-      results.forEach((result, index) => {
-        if (result.status === "fulfilled") {
-          completed++;
-        } else {
-          failed++;
-          const episodeName = batch[index]?.title || `Episode ${i + index + 1}`;
-          errors.push(`${episodeName}: ${result.reason?.message || "Unknown error"}`);
-        }
-      });
-
+      // Update progress after each episode
       setGenerationProgress({
         total: episodes.length,
         completed,
@@ -93,7 +90,9 @@ export default function ProjectDetail() {
     setIsGenerating(false);
     refetchEpisodes();
 
-    if (failed === 0) {
+    if (cancelGenerationRef.current) {
+      toast.info(`Generation stopped. ${completed} artworks created, ${episodes.length - completed - failed} skipped.`);
+    } else if (failed === 0) {
       toast.success(`Successfully generated ${completed} artworks!`);
     } else {
       toast.warning(`Generated ${completed} artworks, ${failed} failed`);
@@ -213,7 +212,10 @@ export default function ProjectDetail() {
               failed={generationProgress.failed}
               isGenerating={isGenerating}
               errors={generationProgress.errors}
-              onCancel={() => setCancelGeneration(true)}
+                onCancel={() => {
+                  setCancelGeneration(true);
+                  cancelGenerationRef.current = true;
+                }}
             />
           )}
 

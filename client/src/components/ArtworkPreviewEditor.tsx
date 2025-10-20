@@ -44,16 +44,36 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   // Load existing template artwork on mount
   useEffect(() => {
     const artworkUrl = existingTemplate?.baseArtworkUrl || projectArtworkUrl;
+    console.log('[Template Editor] Loading artwork:', artworkUrl);
+    
     if (artworkUrl && !baseImage) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
+      
       img.onload = () => {
+        console.log('[Template Editor] Image loaded successfully:', img.width, 'x', img.height);
         setBaseImage(img);
         setBaseImageUrl(artworkUrl);
       };
+      
+      img.onerror = (error) => {
+        console.error('[Template Editor] Failed to load image:', artworkUrl, error);
+        // Try without CORS
+        const img2 = new Image();
+        img2.onload = () => {
+          console.log('[Template Editor] Image loaded without CORS');
+          setBaseImage(img2);
+          setBaseImageUrl(artworkUrl);
+        };
+        img2.onerror = () => {
+          console.error('[Template Editor] Failed to load image even without CORS');
+        };
+        img2.src = artworkUrl;
+      };
+      
       img.src = artworkUrl;
     }
-  }, [existingTemplate, projectArtworkUrl, baseImage]);
+  }, [existingTemplate?.baseArtworkUrl, projectArtworkUrl]);
 
   // Load base image when file is selected
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
