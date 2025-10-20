@@ -20,7 +20,10 @@ export async function cacheArtwork(
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PodcastArtworkStudio/1.0)',
       },
+      redirect: 'follow', // Ensure redirects are followed
     });
+
+    console.log(`[Artwork Cache] Response status: ${response.status}, Final URL: ${response.url}`);
 
     if (!response.ok) {
       console.error(`[Artwork Cache] Failed to download: ${response.status} ${response.statusText}`);
@@ -30,6 +33,14 @@ export async function cacheArtwork(
     // Get the image data
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    console.log(`[Artwork Cache] Downloaded ${buffer.length} bytes (${(buffer.length / 1024).toFixed(2)} KB)`);
+
+    // Validate we got actual image data
+    if (buffer.length < 1000) {
+      console.error(`[Artwork Cache] Downloaded file too small (${buffer.length} bytes), likely not a valid image`);
+      return null;
+    }
 
     // Determine content type
     const contentType = response.headers.get('content-type') || 'image/png';
@@ -48,7 +59,7 @@ export async function cacheArtwork(
     const filename = `${projectId}-${nanoid(8)}.${ext}`;
     const key = `podcast-artwork/${filename}`;
 
-    console.log(`[Artwork Cache] Uploading to Backblaze: ${key}`);
+    console.log(`[Artwork Cache] Uploading ${buffer.length} bytes to Backblaze: ${key}`);
 
     // Upload to Backblaze
     const result = await backblazeStoragePut(key, buffer, contentType);
