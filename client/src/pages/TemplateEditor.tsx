@@ -14,9 +14,14 @@ export default function TemplateEditor() {
   const { data: project } = trpc.projects.get.useQuery({ id: projectId });
   const { data: template } = trpc.templates.get.useQuery({ projectId });
   
+  const utils = trpc.useContext();
+  
   const saveTemplateMutation = trpc.templates.createOrUpdate.useMutation({
     onSuccess: () => {
       toast.success("Template saved successfully!");
+      // Invalidate template query to refetch with new data
+      utils.templates.get.invalidate({ projectId });
+      // Navigate back to project page
       setLocation(`/project/${projectId}`);
     },
     onError: (error: any) => {
@@ -40,7 +45,7 @@ export default function TemplateEditor() {
 
       toast.success('Artwork uploaded successfully!');
 
-      // Save template with S3 URL
+      // Save template with S3 URL and all customization options
       await saveTemplateMutation.mutateAsync({
         projectId,
         name: "Default Template",
@@ -52,6 +57,10 @@ export default function TemplateEditor() {
         episodeNumberColor: config.episodeNumberColor,
         episodeNumberBgColor: config.episodeNumberBgColor,
         episodeNumberBgOpacity: config.episodeNumberBgOpacity,
+        borderRadius: config.borderRadius?.toString() || '8',
+        labelFormat: config.labelFormat || 'number',
+        customPrefix: config.customPrefix || '',
+        customSuffix: config.customSuffix || '',
         showNavigation: config.showNavigation as 'true' | 'false',
         navigationPosition: config.navigationPosition,
         navigationStyle: config.navigationStyle,

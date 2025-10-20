@@ -77,6 +77,10 @@ export const templates = mysqlTable("templates", {
   episodeNumberColor: varchar("episodeNumberColor", { length: 16 }).default("#FFFFFF"),
   episodeNumberBgColor: varchar("episodeNumberBgColor", { length: 16 }).default("#000000"),
   episodeNumberBgOpacity: varchar("episodeNumberBgOpacity", { length: 8 }).default("0.8"),
+  borderRadius: varchar("borderRadius", { length: 16 }).default("8"),
+  labelFormat: varchar("labelFormat", { length: 16 }).default("number"), // number, ep, episode, custom
+  customPrefix: varchar("customPrefix", { length: 32 }).default(""),
+  customSuffix: varchar("customSuffix", { length: 32 }).default(""),
   
   // Navigation indicators
   showNavigation: mysqlEnum("showNavigation", ["true", "false"]).default("true").notNull(),
