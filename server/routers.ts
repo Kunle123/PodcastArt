@@ -365,10 +365,13 @@ export const appRouter = router({
       }),
 
     autoNumber: protectedProcedure
-      .input(z.object({ projectId: z.string() }))
+      .input(z.object({ 
+        projectId: z.string(),
+        mode: z.enum(['sequential', 'custom']).optional().default('sequential'),
+        startNumber: z.number().optional().default(1)
+      }))
       .mutation(async ({ ctx, input }) => {
         const { getProject, getProjectEpisodes, updateEpisode } = await import('./db');
-        const { smartAssignEpisodeNumbers } = await import('./utils/episodeNumbering');
         
         const project = await getProject(input.projectId);
         if (!project || project.userId !== ctx.user.id) {
@@ -376,14 +379,21 @@ export const appRouter = router({
         }
 
         const episodes = await getProjectEpisodes(input.projectId);
-        const assignments = smartAssignEpisodeNumbers(episodes);
         
-        // Update all episodes with assigned numbers
-        for (const [episodeId, number] of Array.from(assignments.entries())) {
-          await updateEpisode(episodeId, { episodeNumber: number });
+        // Renumber episodes sequentially starting from the chosen number
+        // Episodes are already sorted by episode number (descending), so reverse to get oldest first
+        const sortedEpisodes = [...episodes].reverse();
+        
+        let updateCount = 0;
+        for (let i = 0; i < sortedEpisodes.length; i++) {
+          const newNumber = (input.startNumber + i).toString();
+          await updateEpisode(sortedEpisodes[i].id, { episodeNumber: newNumber });
+          updateCount++;
         }
         
-        return { success: true, count: assignments.size };
+        console.log(`[Auto Number] Renumbered ${updateCount} episodes starting from ${input.startNumber}`);
+        
+        return { success: true, count: updateCount };
       }),
     
     fixEpisodeNumbers: protectedProcedure

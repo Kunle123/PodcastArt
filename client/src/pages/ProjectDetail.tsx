@@ -9,6 +9,7 @@ import { Download, Loader2, Upload, ExternalLink, Check, ArrowRight, Eye } from 
 import { ArtworkGenerationProgress } from "@/components/ArtworkGenerationProgress";
 import { ArtworkWorkflow, type WorkflowStep } from "@/components/ArtworkWorkflow";
 import { ImportRssDialog } from "@/components/ImportRssDialog";
+import { RenumberEpisodesDialog } from "@/components/RenumberEpisodesDialog";
 import { ArtworkPreviewDialog } from "@/components/ArtworkPreviewDialog";
 import { RSSFeedUpdateDialog } from "@/components/RSSFeedUpdateDialog";
 import { GuidedUploadDialog } from "@/components/GuidedUploadDialog";
@@ -38,6 +39,7 @@ export default function ProjectDetail() {
   // Client-side batch generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showRenumberDialog, setShowRenumberDialog] = useState(false);
   const [showRSSFeedDialog, setShowRSSFeedDialog] = useState(false);
   const [showGuidedUpload, setShowGuidedUpload] = useState(false);
   const [previewEpisode, setPreviewEpisode] = useState<any | null>(null);
@@ -128,14 +130,22 @@ export default function ProjectDetail() {
   });
 
   const autoNumberMutation = trpc.episodes.autoNumber.useMutation({
-    onSuccess: () => {
-      toast.success("Episodes auto-numbered successfully");
+    onSuccess: (result) => {
+      toast.success(`Renumbered ${result.count} episodes successfully!`);
       refetchEpisodes();
     },
     onError: (error) => {
-      toast.error(`Failed to auto-number episodes: ${error.message}`);
+      toast.error(`Failed to renumber episodes: ${error.message}`);
     },
   });
+
+  const handleRenumber = async (mode: 'sequential' | 'custom', startNumber: number) => {
+    await autoNumberMutation.mutateAsync({ 
+      projectId: id!, 
+      mode,
+      startNumber 
+    });
+  };
 
   const downloadZipMutation = trpc.download.generateZip.useMutation({
     onSuccess: (data) => {
@@ -252,7 +262,7 @@ export default function ProjectDetail() {
             onStepChange={setCurrentStep}
             generationProgress={generationProgress}
             onImportRss={() => setShowImportDialog(true)}
-            onAutoNumber={() => autoNumberMutation.mutate({ projectId: id! })}
+            onAutoNumber={() => setShowRenumberDialog(true)}
             onGenerate={handleBatchGeneration}
             onDownload={() => downloadZipMutation.mutate({ projectId: id! })}
             onUpdateRss={() => setShowRSSFeedDialog(true)}
@@ -319,6 +329,13 @@ export default function ProjectDetail() {
             open={showImportDialog}
             onOpenChange={setShowImportDialog}
             onImport={handleImportRss}
+          />
+
+          <RenumberEpisodesDialog
+            open={showRenumberDialog}
+            onOpenChange={setShowRenumberDialog}
+            onRenumber={handleRenumber}
+            episodeCount={episodes?.length || 0}
           />
 
           <ArtworkPreviewDialog
