@@ -114,6 +114,7 @@ async function syncProject(project: any) {
         audioUrl: ep.audioUrl || null,
         publishedAt: ep.publishedAt || null,
         guid: ep.guid || null,
+        isBonus: 'false', // Default to not bonus for new episodes
       });
 
       console.log(`[RSS Sync] Imported episode ${episodeNumber}: ${ep.title}`);
@@ -163,8 +164,10 @@ export function startRssSyncJob() {
 
   console.log('[RSS Sync] Starting background job (runs every hour)');
   
-  // Run immediately on start
-  syncAllProjects();
+  // TEMPORARILY DISABLED: Run immediately on start
+  // Commented out to allow server to start before migration runs
+  // Uncomment after running /migrate to add isBonus column
+  // syncAllProjects();
 
   // Then run every hour
   syncInterval = setInterval(() => {
