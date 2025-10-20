@@ -42,7 +42,7 @@ export const appRouter = router({
         platform: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const { createProject } = await import('./db');
+        const { createProject, createTemplate } = await import('./db');
         const { nanoid } = await import('nanoid');
         
         const project = {
@@ -56,6 +56,28 @@ export const appRouter = router({
         };
 
         await createProject(project);
+        
+        // Create default template for the project
+        const defaultTemplate = {
+          id: nanoid(),
+          projectId: project.id,
+          name: 'Default Template',
+          baseArtworkUrl: null, // Will be set when RSS feed is imported
+          showEpisodeNumber: 'true' as const,
+          episodeNumberPosition: 'top-right',
+          episodeNumberFont: 'Arial',
+          episodeNumberSize: '120',
+          episodeNumberColor: '#FFFFFF',
+          episodeNumberBgColor: '#000000',
+          episodeNumberBgOpacity: '0.8',
+          showNavigation: 'true' as const,
+          navigationPosition: 'bottom-center',
+          navigationStyle: 'arrows',
+          isActive: 'true' as const,
+        };
+        
+        await createTemplate(defaultTemplate);
+        
         return project;
       }),
 
@@ -114,7 +136,7 @@ export const appRouter = router({
         rssFeedUrl: z.string().url(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const { getProject, createEpisodes, updateProject } = await import('./db');
+        const { getProject, createEpisodes, updateProject, getProjectTemplate, updateTemplate } = await import('./db');
         const { parseRssFeed } = await import('./utils/rssParser');
         const { nanoid } = await import('nanoid');
         const { checkEpisodeLimit } = await import('./utils/usageLimits');
@@ -130,6 +152,12 @@ export const appRouter = router({
         // Check usage limits for free users
         if (ctx.user.subscriptionPlan === 'free' && feed.episodes.length > 10) {
           throw new Error('Free plan is limited to 10 episodes. Upgrade to Pro for unlimited episodes.');
+        }
+
+        // Update template with podcast artwork if available
+        const template = await getProjectTemplate(input.projectId);
+        if (template && feed.artworkUrl && !template.baseArtworkUrl) {
+          await updateTemplate(template.id, { baseArtworkUrl: feed.artworkUrl });
         }
 
         // Create episodes
@@ -149,8 +177,11 @@ export const appRouter = router({
 
         await createEpisodes(episodes);
 
-        // Update project with RSS feed URL
-        await updateProject(input.projectId, { rssFeedUrl: input.rssFeedUrl });
+        // Update project with RSS feed URL and podcast artwork
+        await updateProject(input.projectId, { 
+          rssFeedUrl: input.rssFeedUrl,
+          podcastArtworkUrl: feed.artworkUrl || null,
+        });
 
         return {
           success: true,
@@ -190,7 +221,7 @@ export const appRouter = router({
     importRss: protectedProcedure
       .input(z.object({ projectId: z.string(), rssUrl: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const { getProject, createEpisodes } = await import('./db');
+        const { getProject, createEpisodes, getProjectTemplate, updateTemplate, updateProject } = await import('./db');
         const { parseRssFeed } = await import('./utils/rssParser');
         const { nanoid } = await import('nanoid');
         
@@ -201,21 +232,32 @@ export const appRouter = router({
 
         const parsedFeed = await parseRssFeed(input.rssUrl);
         
+        // Update template with podcast artwork if available
+        const template = await getProjectTemplate(input.projectId);
+        if (template && parsedFeed.artworkUrl && !template.baseArtworkUrl) {
+          await updateTemplate(template.id, { baseArtworkUrl: parsedFeed.artworkUrl });
+        }
+        
         const episodesToInsert = parsedFeed.episodes.map((ep: any) => ({
           id: nanoid(),
           projectId: input.projectId,
           title: ep.title,
           description: ep.description || null,
           audioUrl: ep.audioUrl || null,
-          publishedAt: ep.publishDate,
+          publishedAt: ep.publishedAt,
           episodeNumber: ep.episodeNumber?.toString() || null,
-          seasonNumber: ep.season?.toString() || null,
+          seasonNumber: ep.seasonNumber?.toString() || null,
           originalArtworkUrl: ep.artworkUrl || null,
           generatedArtworkUrl: null,
           guid: ep.guid || null,
         }));
 
         await createEpisodes(episodesToInsert);
+        
+        // Update project with podcast artwork
+        await updateProject(input.projectId, { 
+          podcastArtworkUrl: parsedFeed.artworkUrl || null,
+        });
         
         return { success: true, count: episodesToInsert.length };
       }),
