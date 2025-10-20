@@ -23,6 +23,7 @@ export async function parseRssFeed(feedUrl: string): Promise<PodcastFeed> {
     customFields: {
       feed: [
         ['itunes:image', 'itunesImage'],
+        ['image', 'feedImage'], // Explicitly capture RSS <image> tag
       ],
       item: [
         ['itunes:episode', 'itunesEpisode'],
@@ -79,22 +80,50 @@ export async function parseRssFeed(feedUrl: string): Promise<PodcastFeed> {
   // Try multiple sources for podcast artwork
   const feedAny = feed as any;
   
+  console.log('[RSS Parser] Checking artwork sources...');
+  console.log('[RSS Parser] feed.itunesImage:', feedAny.itunesImage);
+  console.log('[RSS Parser] feed.feedImage:', feedAny.feedImage);
+  console.log('[RSS Parser] feed.itunes?.image:', feed.itunes?.image);
+  console.log('[RSS Parser] feed.image:', feed.image);
+  
+  // Source 1: Custom itunes:image field (attribute href)
   if (feedAny.itunesImage) {
-    // Custom field: itunes:image at feed level
     if (typeof feedAny.itunesImage === 'string') {
       podcastArtwork = feedAny.itunesImage;
+      console.log('[RSS Parser] ✅ Using itunesImage (string)');
     } else if (feedAny.itunesImage.$ && feedAny.itunesImage.$.href) {
       podcastArtwork = feedAny.itunesImage.$.href;
+      console.log('[RSS Parser] ✅ Using itunesImage.$.href');
+    } else if (feedAny.itunesImage.href) {
+      podcastArtwork = feedAny.itunesImage.href;
+      console.log('[RSS Parser] ✅ Using itunesImage.href');
     }
-  } else if (feed.itunes?.image) {
-    // Standard itunes.image field
-    podcastArtwork = feed.itunes.image;
-  } else if (feed.image?.url) {
-    // Standard RSS image.url field
-    podcastArtwork = feed.image.url;
   }
   
-  console.log('[RSS Parser] Podcast artwork URL:', podcastArtwork || 'None found');
+  // Source 2: Standard itunes.image field
+  if (!podcastArtwork && feed.itunes?.image) {
+    podcastArtwork = feed.itunes.image;
+    console.log('[RSS Parser] ✅ Using feed.itunes.image');
+  }
+  
+  // Source 3: Custom feedImage field (RSS <image><url>)
+  if (!podcastArtwork && feedAny.feedImage) {
+    if (typeof feedAny.feedImage === 'string') {
+      podcastArtwork = feedAny.feedImage;
+      console.log('[RSS Parser] ✅ Using feedImage (string)');
+    } else if (feedAny.feedImage.url) {
+      podcastArtwork = feedAny.feedImage.url;
+      console.log('[RSS Parser] ✅ Using feedImage.url');
+    }
+  }
+  
+  // Source 4: Standard feed.image.url field (should work by default)
+  if (!podcastArtwork && feed.image?.url) {
+    podcastArtwork = feed.image.url;
+    console.log('[RSS Parser] ✅ Using feed.image.url');
+  }
+  
+  console.log('[RSS Parser] Final artwork URL:', podcastArtwork || '❌ None found');
 
   return {
     title: feed.title || 'Untitled Podcast',

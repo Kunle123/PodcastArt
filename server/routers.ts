@@ -256,6 +256,29 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    toggleBonus: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        isBonus: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getEpisode, updateEpisode, getProject } = await import('./db');
+        
+        // Verify ownership through project
+        const episode = await getEpisode(input.id);
+        if (!episode) {
+          throw new Error('Episode not found');
+        }
+        
+        const project = await getProject(episode.projectId);
+        if (!project || project.userId !== ctx.user.id) {
+          throw new Error('Not authorized');
+        }
+        
+        await updateEpisode(input.id, { isBonus: input.isBonus ? 'true' : 'false' });
+        return { success: true, isBonus: input.isBonus };
+      }),
+
     importRss: protectedProcedure
       .input(z.object({ 
         projectId: z.string(), 
@@ -522,6 +545,10 @@ export const appRouter = router({
         labelFormat: z.string().optional(),
         customPrefix: z.string().optional(),
         customSuffix: z.string().optional(),
+        bonusNumberingMode: z.string().optional(),
+        bonusLabel: z.string().optional(),
+        bonusPrefix: z.string().optional(),
+        bonusSuffix: z.string().optional(),
         showNavigation: z.enum(['true', 'false']),
         navigationPosition: z.string(),
         navigationStyle: z.string(),

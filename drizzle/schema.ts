@@ -55,6 +55,7 @@ export const episodes = mysqlTable("episodes", {
   audioUrl: text("audioUrl"),
   publishedAt: timestamp("publishedAt"),
   guid: text("guid"),
+  isBonus: mysqlEnum("isBonus", ["true", "false"]).default("false").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
@@ -81,6 +82,12 @@ export const templates = mysqlTable("templates", {
   labelFormat: varchar("labelFormat", { length: 16 }).default("number"), // number, ep, episode, custom
   customPrefix: varchar("customPrefix", { length: 32 }).default(""),
   customSuffix: varchar("customSuffix", { length: 32 }).default(""),
+  
+  // Bonus episode configuration
+  bonusNumberingMode: varchar("bonusNumberingMode", { length: 16 }).default("included"), // included, separate, none
+  bonusLabel: varchar("bonusLabel", { length: 32 }).default("Bonus"), // "Bonus", "Special", "Extra", etc.
+  bonusPrefix: varchar("bonusPrefix", { length: 32 }).default(""),
+  bonusSuffix: varchar("bonusSuffix", { length: 32 }).default(""),
   
   // Navigation indicators
   showNavigation: mysqlEnum("showNavigation", ["true", "false"]).default("true").notNull(),
