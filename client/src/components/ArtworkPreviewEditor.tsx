@@ -37,7 +37,9 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   const [bgColor, setBgColor] = useState(existingTemplate?.episodeNumberBgColor || '#000000');
   const [bgOpacity, setBgOpacity] = useState(parseFloat(existingTemplate?.episodeNumberBgOpacity || '0.8'));
   const [borderRadius, setBorderRadius] = useState(8); // New: border radius
-  const [labelFormat, setLabelFormat] = useState<'number' | 'ep' | 'episode'>('number'); // New: label format
+  const [labelFormat, setLabelFormat] = useState<'number' | 'ep' | 'episode' | 'custom'>('number'); // New: label format
+  const [customPrefix, setCustomPrefix] = useState(''); // New: custom prefix (e.g. "Download - ")
+  const [customSuffix, setCustomSuffix] = useState(''); // New: custom suffix
   const [showNav, setShowNav] = useState(existingTemplate?.showNavigation === 'true' ? true : true);
   const [navPosition, setNavPosition] = useState(existingTemplate?.navigationPosition || 'bottom-center');
   const [navStyle, setNavStyle] = useState(existingTemplate?.navigationStyle || 'arrows');
@@ -52,8 +54,10 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   useEffect(() => {
     const artworkUrl = existingTemplate?.baseArtworkUrl || projectArtworkUrl;
     console.log('[Template Editor] Loading artwork:', artworkUrl);
+    console.log('[Template Editor] Existing template:', existingTemplate);
+    console.log('[Template Editor] Project artwork URL:', projectArtworkUrl);
     
-    if (artworkUrl && !baseImage) {
+    if (artworkUrl) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
@@ -64,7 +68,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       };
       
       img.onerror = (error) => {
-        console.error('[Template Editor] Failed to load image:', artworkUrl, error);
+        console.error('[Template Editor] Failed to load image with CORS:', artworkUrl, error);
         // Try without CORS
         const img2 = new Image();
         img2.onload = () => {
@@ -72,13 +76,15 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
           setBaseImage(img2);
           setBaseImageUrl(artworkUrl);
         };
-        img2.onerror = () => {
-          console.error('[Template Editor] Failed to load image even without CORS');
+        img2.onerror = (err) => {
+          console.error('[Template Editor] Failed to load image completely:', err);
         };
         img2.src = artworkUrl;
       };
       
       img.src = artworkUrl;
+    } else {
+      console.log('[Template Editor] No artwork URL available');
     }
   }, [existingTemplate?.baseArtworkUrl, projectArtworkUrl]);
 
@@ -187,6 +193,8 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       ? `Ep. ${previewNumber}`
       : labelFormat === 'episode'
       ? `Episode ${previewNumber}`
+      : labelFormat === 'custom'
+      ? `${customPrefix}${previewNumber}${customSuffix}`
       : previewNumber;
 
     // Measure text for background
@@ -252,7 +260,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       
       ctx.fillText(navText, navX, navY);
     }
-  }, [baseImage, position, customX, customY, fontSize, textColor, bgColor, bgOpacity, borderRadius, labelFormat, showNav, navPosition, navStyle, previewNumber]);
+  }, [baseImage, position, customX, customY, fontSize, textColor, bgColor, bgOpacity, borderRadius, labelFormat, customPrefix, customSuffix, showNav, navPosition, navStyle, previewNumber]);
 
   // Mouse handlers for dragging
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -385,7 +393,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
             {/* Label Format */}
             <div className="space-y-2">
               <Label>Label Format</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <Button
                   type="button"
                   variant={labelFormat === 'number' ? 'default' : 'outline'}
@@ -400,7 +408,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                   variant={labelFormat === 'ep' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setLabelFormat('ep')}
-                  className="w-full"
+                  className="w-full text-xs"
                 >
                   Ep. 42
                 </Button>
@@ -413,7 +421,45 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                 >
                   Episode 42
                 </Button>
+                <Button
+                  type="button"
+                  variant={labelFormat === 'custom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setLabelFormat('custom')}
+                  className="w-full text-xs"
+                >
+                  Custom
+                </Button>
               </div>
+              
+              {/* Custom Label Fields */}
+              {labelFormat === 'custom' && (
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Prefix (before number)</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. 'Download - '"
+                      value={customPrefix}
+                      onChange={(e) => setCustomPrefix(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Suffix (after number)</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. ' | Listen Now'"
+                      value={customSuffix}
+                      onChange={(e) => setCustomSuffix(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="bg-muted p-2 rounded text-xs">
+                    Preview: <span className="font-bold">{customPrefix}{previewNumber}{customSuffix}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Position */}
