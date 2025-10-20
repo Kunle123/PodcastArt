@@ -608,6 +608,7 @@ export const appRouter = router({
 
         const artworkUrl = await generateEpisodeArtwork({
           episodeNumber: episode.episodeNumber.toString(),
+          isBonus: episode.isBonus === 'true',
           baseImageUrl: template.baseArtworkUrl,
           numberPosition: template.episodeNumberPosition || 'top-right',
           fontSize: parseInt(template.episodeNumberSize || '120'),
@@ -615,6 +616,14 @@ export const appRouter = router({
           fontFamily: template.episodeNumberFont || 'Arial',
           backgroundColor: template.episodeNumberBgColor || '#000000',
           backgroundOpacity: parseFloat(template.episodeNumberBgOpacity || '0.8'),
+          labelFormat: template.labelFormat || 'number',
+          customPrefix: template.customPrefix || '',
+          customSuffix: template.customSuffix || '',
+          borderRadius: parseInt(template.borderRadius || '8'),
+          bonusNumberingMode: template.bonusNumberingMode || 'included',
+          bonusLabel: template.bonusLabel || 'Bonus',
+          bonusPrefix: template.bonusPrefix || '',
+          bonusSuffix: template.bonusSuffix || '',
           showNavigation: template.showNavigation === 'true',
           navigationPosition: template.navigationPosition || 'bottom-center',
           navigationStyle: template.navigationStyle || 'arrows',

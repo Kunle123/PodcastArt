@@ -1,9 +1,30 @@
 import { createCanvas, loadImage, registerFont } from 'canvas';
 import { backblazeStoragePut } from '../backblazeStorage';
 
+// Helper function to format episode label
+function formatLabel(
+  episodeNumber: string, 
+  labelFormat: string, 
+  customPrefix: string, 
+  customSuffix: string
+): string {
+  switch (labelFormat) {
+    case 'ep':
+      return `Ep. ${episodeNumber}`;
+    case 'episode':
+      return `Episode ${episodeNumber}`;
+    case 'custom':
+      return `${customPrefix}${episodeNumber}${customSuffix}`;
+    case 'number':
+    default:
+      return episodeNumber;
+  }
+}
+
 interface ArtworkOptions {
   baseImageUrl: string;
   episodeNumber: string;
+  isBonus: boolean;
   
   // Positioning
   numberPosition: string; // 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'
@@ -14,6 +35,16 @@ interface ArtworkOptions {
   fontFamily: string;
   backgroundColor: string;
   backgroundOpacity: number;
+  labelFormat: string; // 'number', 'ep', 'episode', 'custom'
+  customPrefix: string;
+  customSuffix: string;
+  borderRadius: number;
+  
+  // Bonus episode configuration
+  bonusNumberingMode: string; // 'included', 'separate', 'none'
+  bonusLabel: string; // 'Bonus', 'Special', 'Extra', etc.
+  bonusPrefix: string;
+  bonusSuffix: string;
   
   // Navigation
   showNavigation: boolean;
@@ -25,12 +56,21 @@ export async function generateEpisodeArtwork(options: ArtworkOptions): Promise<s
   const {
     baseImageUrl,
     episodeNumber,
+    isBonus,
     numberPosition,
     fontSize,
     fontColor,
     fontFamily,
     backgroundColor,
     backgroundOpacity,
+    labelFormat,
+    customPrefix,
+    customSuffix,
+    borderRadius,
+    bonusNumberingMode,
+    bonusLabel,
+    bonusPrefix,
+    bonusSuffix,
     showNavigation,
     navigationPosition,
     navigationStyle,
@@ -86,13 +126,33 @@ export async function generateEpisodeArtwork(options: ArtworkOptions): Promise<s
       break;
   }
 
+  // Generate label text based on bonus status and configuration
+  let labelText = '';
+  
+  if (isBonus) {
+    // Bonus episode labeling
+    if (bonusNumberingMode === 'none') {
+      // Just "Bonus" or custom label
+      labelText = bonusLabel || 'Bonus';
+    } else if (bonusNumberingMode === 'separate') {
+      // "Bonus 1" or "B1" format
+      labelText = `${bonusPrefix}${bonusLabel || 'Bonus'} ${episodeNumber}${bonusSuffix}`;
+    } else {
+      // 'included' - use normal labeling like regular episodes
+      labelText = formatLabel(episodeNumber, labelFormat, customPrefix, customSuffix);
+    }
+  } else {
+    // Regular episode labeling
+    labelText = formatLabel(episodeNumber, labelFormat, customPrefix, customSuffix);
+  }
+
   // Set font
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
 
   // Measure text for background
-  const metrics = ctx.measureText(episodeNumber);
+  const metrics = ctx.measureText(labelText);
   const textWidth = metrics.width;
   const textHeight = fontSize;
 
@@ -125,9 +185,9 @@ export async function generateEpisodeArtwork(options: ArtworkOptions): Promise<s
     ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
   }
 
-  // Draw episode number
+  // Draw episode number/label
   ctx.fillStyle = fontColor;
-  ctx.fillText(episodeNumber, x, y);
+  ctx.fillText(labelText, x, y);
 
   // Draw navigation indicators if enabled
   if (showNavigation) {

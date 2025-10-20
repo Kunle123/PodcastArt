@@ -20,6 +20,14 @@ export interface ArtworkConfig {
   episodeNumberColor: string;
   episodeNumberBgColor: string;
   episodeNumberBgOpacity: string;
+  labelFormat?: string;
+  customPrefix?: string;
+  customSuffix?: string;
+  borderRadius?: number;
+  bonusNumberingMode?: string;
+  bonusLabel?: string;
+  bonusPrefix?: string;
+  bonusSuffix?: string;
   showNavigation: string;
   navigationPosition: string;
   navigationStyle: string;
@@ -40,6 +48,15 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   const [labelFormat, setLabelFormat] = useState<'number' | 'ep' | 'episode' | 'custom'>('number'); // New: label format
   const [customPrefix, setCustomPrefix] = useState(''); // New: custom prefix (e.g. "Download - ")
   const [customSuffix, setCustomSuffix] = useState(''); // New: custom suffix
+  
+  // Bonus episode configuration
+  const [bonusNumberingMode, setBonusNumberingMode] = useState<'included' | 'separate' | 'none'>(
+    (existingTemplate?.bonusNumberingMode as 'included' | 'separate' | 'none') || 'included'
+  );
+  const [bonusLabel, setBonusLabel] = useState(existingTemplate?.bonusLabel || 'Bonus');
+  const [bonusPrefix, setBonusPrefix] = useState(existingTemplate?.bonusPrefix || '');
+  const [bonusSuffix, setBonusSuffix] = useState(existingTemplate?.bonusSuffix || '');
+  
   const [showNav, setShowNav] = useState(existingTemplate?.showNavigation === 'true' ? true : true);
   const [navPosition, setNavPosition] = useState(existingTemplate?.navigationPosition || 'bottom-center');
   const [navStyle, setNavStyle] = useState(existingTemplate?.navigationStyle || 'arrows');
@@ -320,6 +337,14 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
       episodeNumberColor: textColor,
       episodeNumberBgColor: bgColor,
       episodeNumberBgOpacity: bgOpacity.toString(),
+      labelFormat,
+      customPrefix,
+      customSuffix,
+      borderRadius,
+      bonusNumberingMode,
+      bonusLabel,
+      bonusPrefix,
+      bonusSuffix,
       showNavigation: showNav ? 'true' : 'false',
       navigationPosition: navPosition,
       navigationStyle: navStyle,
@@ -591,6 +616,99 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Bonus Episode Configuration */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-lg">Bonus Episode Labeling</h3>
+            <p className="text-sm text-muted-foreground">
+              Configure how bonus episodes are labeled when marked as bonus
+            </p>
+            
+            <div className="space-y-2">
+              <Label>Bonus Numbering Mode</Label>
+              <Select 
+                value={bonusNumberingMode} 
+                onValueChange={(value: 'included' | 'separate' | 'none') => setBonusNumberingMode(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="included">
+                    <div className="flex flex-col">
+                      <span>Included in Sequence</span>
+                      <span className="text-xs text-muted-foreground">Use normal episode labels (1, 2, 3...)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="separate">
+                    <div className="flex flex-col">
+                      <span>Separate Numbering</span>
+                      <span className="text-xs text-muted-foreground">Label as "Bonus 1", "Bonus 2"...</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="none">
+                    <div className="flex flex-col">
+                      <span>No Number</span>
+                      <span className="text-xs text-muted-foreground">Just show "Bonus" label</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {bonusNumberingMode !== 'included' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bonus-label">Bonus Label</Label>
+                  <Input
+                    id="bonus-label"
+                    type="text"
+                    value={bonusLabel}
+                    onChange={(e) => setBonusLabel(e.target.value)}
+                    placeholder="Bonus"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    e.g., "Bonus", "Special", "Extra"
+                  </p>
+                </div>
+
+                {bonusNumberingMode === 'separate' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="bonus-prefix">Prefix (Optional)</Label>
+                      <Input
+                        id="bonus-prefix"
+                        type="text"
+                        value={bonusPrefix}
+                        onChange={(e) => setBonusPrefix(e.target.value)}
+                        placeholder=""
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bonus-suffix">Suffix (Optional)</Label>
+                      <Input
+                        id="bonus-suffix"
+                        type="text"
+                        value={bonusSuffix}
+                        onChange={(e) => setBonusSuffix(e.target.value)}
+                        placeholder=""
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                  <p className="text-sm font-medium mb-1">Preview:</p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    {bonusNumberingMode === 'none' 
+                      ? bonusLabel
+                      : `${bonusPrefix}${bonusLabel} 1${bonusSuffix}`
+                    }
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Navigation Indicators */}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Download, Loader2, Upload, ExternalLink, Check, ArrowRight, Eye } from "lucide-react";
+import { Download, Loader2, Upload, ExternalLink, Check, ArrowRight, Eye, Star } from "lucide-react";
 import { ArtworkGenerationProgress } from "@/components/ArtworkGenerationProgress";
 import { ArtworkWorkflow, type WorkflowStep } from "@/components/ArtworkWorkflow";
 import { ImportRssDialog } from "@/components/ImportRssDialog";
@@ -145,6 +145,20 @@ export default function ProjectDetail() {
       mode,
       startNumber 
     });
+  };
+
+  const toggleBonusMutation = trpc.episodes.toggleBonus.useMutation({
+    onSuccess: (result, variables) => {
+      toast.success(result.isBonus ? "Marked as bonus episode" : "Unmarked as bonus");
+      refetchEpisodes();
+    },
+    onError: (error) => {
+      toast.error(`Failed to toggle bonus status: ${error.message}`);
+    },
+  });
+
+  const handleToggleBonus = (episodeId: string, currentStatus: boolean) => {
+    toggleBonusMutation.mutate({ id: episodeId, isBonus: !currentStatus });
   };
 
   const downloadZipMutation = trpc.download.generateZip.useMutation({
@@ -299,25 +313,50 @@ export default function ProjectDetail() {
                 {episodes.map((episode) => (
                   <div
                     key={episode.id}
-                    className="flex items-center justify-between p-3 border rounded hover:bg-accent cursor-pointer"
-                    onClick={() => setPreviewEpisode(episode)}
+                    className="flex items-center justify-between p-3 border rounded hover:bg-accent"
                   >
-                    <div>
-                      <h4 className="font-medium text-sm">{episode.title}</h4>
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => setPreviewEpisode(episode)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-sm">{episode.title}</h4>
+                        {episode.isBonus === 'true' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            <Star className="h-3 w-3 mr-1" />
+                            Bonus
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {episode.episodeNumber ? `Episode ${episode.episodeNumber}` : "No episode number"}
                       </p>
                     </div>
-                    {episode.generatedArtworkUrl && (
-                      <a
-                        href={episode.generatedArtworkUrl}
-                        download
-                        className="text-primary hover:underline"
-                        onClick={(e) => e.stopPropagation()}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={episode.isBonus === 'true' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleBonus(episode.id, episode.isBonus === 'true');
+                        }}
+                        disabled={toggleBonusMutation.isPending}
+                        className="text-xs"
                       >
-                        <Download className="h-4 w-4" />
-                      </a>
-                    )}
+                        <Star className="h-3 w-3 mr-1" />
+                        {episode.isBonus === 'true' ? 'Bonus' : 'Mark Bonus'}
+                      </Button>
+                      {episode.generatedArtworkUrl && (
+                        <a
+                          href={episode.generatedArtworkUrl}
+                          download
+                          className="text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
