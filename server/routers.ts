@@ -365,10 +365,11 @@ export const appRouter = router({
           }
         }
         
-        // Update template with podcast artwork if available
+        // Update template with cached artwork (always update to use latest Backblaze URL)
         const template = await getProjectTemplate(input.projectId);
-        if (template && cachedArtworkUrl && !template.baseArtworkUrl) {
+        if (template && cachedArtworkUrl) {
           await updateTemplate(template.id, { baseArtworkUrl: cachedArtworkUrl });
+          console.log(`[Import] Updated template baseArtworkUrl to: ${cachedArtworkUrl}`);
         }
         
         // Clear existing episodes if requested (or if this is a re-import)
