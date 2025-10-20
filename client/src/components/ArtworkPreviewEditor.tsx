@@ -80,16 +80,31 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size to match image (scaled down for preview)
-    const scale = 0.2; // 20% of original size for preview
-    canvas.width = baseImage.width * scale;
-    canvas.height = baseImage.height * scale;
+    // Set canvas to square (podcast artwork standard)
+    // Use larger dimension to ensure full quality
+    const size = Math.max(baseImage.width, baseImage.height);
+    const targetSize = 600; // Fixed size for consistent preview
+    const scale = targetSize / size;
+    
+    canvas.width = targetSize;
+    canvas.height = targetSize;
 
-    // Draw base image
-    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+    // Draw base image centered in square canvas
+    const imgScale = Math.min(canvas.width / baseImage.width, canvas.height / baseImage.height);
+    const imgWidth = baseImage.width * imgScale;
+    const imgHeight = baseImage.height * imgScale;
+    const imgX = (canvas.width - imgWidth) / 2;
+    const imgY = (canvas.height - imgHeight) / 2;
+    
+    // Fill background
+    ctx.fillStyle = '#f3f4f6';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw image
+    ctx.drawImage(baseImage, imgX, imgY, imgWidth, imgHeight);
 
     // Calculate position for episode number
-    const padding = 20 * scale;
+    const padding = 30; // Fixed padding for 600px canvas
     let x = 0;
     let y = 0;
     let textAlign: CanvasTextAlign = 'left';
@@ -128,8 +143,8 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
         break;
     }
 
-    // Set font (scaled)
-    const scaledFontSize = fontSize * scale;
+    // Set font (scale to canvas size)
+    const scaledFontSize = (fontSize / size) * targetSize;
     ctx.font = `bold ${scaledFontSize}px Arial`;
     ctx.textAlign = textAlign;
     ctx.textBaseline = textBaseline;
@@ -141,7 +156,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
 
     // Draw background rectangle
     if (bgOpacity > 0) {
-      const bgPadding = 15 * scale;
+      const bgPadding = 15;
       ctx.fillStyle = hexToRgba(bgColor, bgOpacity);
       
       let bgX = x;
@@ -175,7 +190,7 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
 
     // Draw navigation indicators if enabled
     if (showNav) {
-      const navFontSize = 24 * scale;
+      const navFontSize = 28;
       ctx.font = `${navFontSize}px Arial`;
       ctx.fillStyle = textColor;
 
@@ -226,16 +241,17 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
         </CardHeader>
         <CardContent>
           {!baseImage ? (
-            <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
+            <div className="aspect-square w-full flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed">
               <p className="text-gray-500">Upload an image to see preview</p>
             </div>
           ) : (
             <div className="flex flex-col items-center space-y-4">
-              <canvas
-                ref={canvasRef}
-                className="border-2 border-gray-300 rounded-lg max-w-full"
-                style={{ maxHeight: '500px' }}
-              />
+              <div className="aspect-square w-full max-w-md mx-auto">
+                <canvas
+                  ref={canvasRef}
+                  className="border-2 border-gray-300 rounded-lg w-full h-full object-contain"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <Label>Preview Episode Number:</Label>
                 <Input
