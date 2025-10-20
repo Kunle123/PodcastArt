@@ -36,7 +36,10 @@ export interface ArtworkConfig {
 export default function ArtworkPreviewEditor({ onSave, existingTemplate, projectArtworkUrl }: ArtworkPreviewEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
-  const [baseImageUrl, setBaseImageUrl] = useState<string>('');
+  // Initialize baseImageUrl from existing template or project artwork
+  const [baseImageUrl, setBaseImageUrl] = useState<string>(
+    existingTemplate?.baseArtworkUrl || projectArtworkUrl || ''
+  );
   
   // Configuration state - initialize from existing template if available
   const [position, setPosition] = useState(existingTemplate?.episodeNumberPosition || 'top-right');

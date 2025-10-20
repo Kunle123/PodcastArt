@@ -17,14 +17,24 @@ export default function TemplateEditor() {
   const utils = trpc.useContext();
   
   const saveTemplateMutation = trpc.templates.createOrUpdate.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Template saved successfully! Redirecting to preview...");
-      // Invalidate template query to refetch with new data
-      utils.templates.get.invalidate({ projectId });
+      
+      // Invalidate both template and project queries to refetch with new data
+      // Wait for refetch to complete before navigating
+      await Promise.all([
+        utils.templates.get.invalidate({ projectId }),
+        utils.projects.get.invalidate({ id: projectId }),
+      ]);
+      
+      // Give queries a moment to refetch
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Set workflow step to preview
       localStorage.setItem(`workflow-step-${projectId}`, 'preview');
-      // Navigate back to project page - will show preview step
-      setTimeout(() => setLocation(`/project/${projectId}`), 500);
+      
+      // Navigate back to project page - will show preview step with fresh data
+      setLocation(`/project/${projectId}`);
     },
     onError: (error: any) => {
       toast.error(`Failed to save template: ${error.message}`);
