@@ -53,14 +53,17 @@ export const appRouter = router({
               await connection.execute(col.sql);
               results.push(`✅ templates.${col.name}`);
             } catch (error: any) {
-              // Debug: log full error object structure
-              console.error(`[Migration] Error for ${col.name}:`, error);
+              // Check both error.code and error.cause for duplicate column detection
+              const isDuplicate = 
+                error.code === 'ER_DUP_FIELDNAME' || 
+                error.errno === 1060 ||
+                (error.cause && error.cause.code === 'ER_DUP_FIELDNAME');
               
-              const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
-              if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
+              if (isDuplicate) {
                 results.push(`⏭️ templates.${col.name} already exists`);
               } else {
-                // Show full error details
+                console.error(`[Migration] Error for ${col.name}:`, error);
+                const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
                 results.push(`❌ templates.${col.name}: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
               }
             }
@@ -73,14 +76,17 @@ export const appRouter = router({
             );
             results.push(`✅ episodes.isBonus`);
           } catch (error: any) {
-            // Debug: log full error object structure
-            console.error('[Migration] Error for isBonus:', error);
+            // Check both error.code and error.cause for duplicate column detection
+            const isDuplicate = 
+              error.code === 'ER_DUP_FIELDNAME' || 
+              error.errno === 1060 ||
+              (error.cause && error.cause.code === 'ER_DUP_FIELDNAME');
             
-            const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
-            if (errorMsg.includes('Duplicate column') || errorMsg.includes('duplicate column')) {
+            if (isDuplicate) {
               results.push(`⏭️ episodes.isBonus already exists`);
             } else {
-              // Show full error details
+              console.error('[Migration] Error for isBonus:', error);
+              const errorMsg = error.message || error.sqlMessage || error.code || JSON.stringify(error);
               results.push(`❌ episodes.isBonus: ${errorMsg} | Code: ${error.code} | Errno: ${error.errno}`);
             }
           }
