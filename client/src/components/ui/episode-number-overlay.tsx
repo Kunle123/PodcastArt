@@ -56,15 +56,19 @@ export function EpisodeNumberOverlay({
     template.episodeNumberBgOpacity || '0.8'
   );
 
-  // Use the exact font size from template settings
-  // The font size is already calibrated for artwork (typically 400-600px containers)
-  // Only scale down on very small screens to maintain readability
+  // Scale font size to match canvas editor behavior
+  // Canvas uses: (fontSize / 1500) * 600 for preview
+  // So 100px font becomes 40px in 600px canvas
+  // We'll scale proportionally: fontSize * 0.4 for typical preview sizes
   const baseFontSize = parseInt(template.episodeNumberSize || '100');
+  
+  // Scale down by same ratio as canvas editor (600/1500 = 0.4)
+  const scaledFontSize = Math.round(baseFontSize * 0.4);
   const minSize = 16; // Absolute minimum for readability
   
-  // Use max() to prefer the set pixel size, but scale down proportionally on tiny screens
-  // On a 400px wide container, 25% = 100px, so this scales well
-  const responsiveFontSize = `max(${minSize}px, min(${baseFontSize}px, 25vw))`;
+  // Use the scaled font size with small responsive adjustment
+  // Allow slight scaling on very large/small screens
+  const responsiveFontSize = `clamp(${minSize}px, ${scaledFontSize}px, ${scaledFontSize * 1.2}px)`;
 
   return (
     <div 
