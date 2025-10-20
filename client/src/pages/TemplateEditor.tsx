@@ -78,6 +78,8 @@ export default function TemplateEditor() {
         baseArtworkUrl: artworkUrl,
         showEpisodeNumber: config.showNavigation === 'true' ? 'true' : 'false',
         episodeNumberPosition: config.episodeNumberPosition,
+        customPositionX: config.customPositionX?.toString() || '0.25',
+        customPositionY: config.customPositionY?.toString() || '0.25',
         episodeNumberFont: config.episodeNumberFont,
         episodeNumberSize: config.episodeNumberSize,
         episodeNumberColor: config.episodeNumberColor,

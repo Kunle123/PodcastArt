@@ -15,6 +15,8 @@ interface ArtworkPreviewEditorProps {
 export interface ArtworkConfig {
   baseArtworkUrl: string;
   episodeNumberPosition: string;
+  customPositionX?: number;
+  customPositionY?: number;
   episodeNumberFont: string;
   episodeNumberSize: string;
   episodeNumberColor: string;
@@ -65,9 +67,13 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
   const [navStyle, setNavStyle] = useState(existingTemplate?.navigationStyle || 'arrows');
   const [previewNumber, setPreviewNumber] = useState('42');
   
-  // Draggable position (percentage of canvas size)
-  const [customX, setCustomX] = useState(0.9); // 90% from left (top-right default)
-  const [customY, setCustomY] = useState(0.1); // 10% from top
+  // Draggable position (percentage of canvas size) - initialize from existing template
+  const [customX, setCustomX] = useState(
+    parseFloat(existingTemplate?.customPositionX || '0.9')
+  );
+  const [customY, setCustomY] = useState(
+    parseFloat(existingTemplate?.customPositionY || '0.1')
+  );
   const [isDragging, setIsDragging] = useState(false);
   
   // Load existing template artwork on mount
@@ -335,6 +341,8 @@ export default function ArtworkPreviewEditor({ onSave, existingTemplate, project
     const config: ArtworkConfig = {
       baseArtworkUrl: baseImageUrl,
       episodeNumberPosition: position,
+      customPositionX: customX,
+      customPositionY: customY,
       episodeNumberFont: 'Arial',
       episodeNumberSize: fontSize.toString(),
       episodeNumberColor: textColor,

@@ -34,6 +34,8 @@ export default function RunMigration() {
               <li><code>labelFormat</code> - For "Ep. 1" vs "Episode 1" vs "1"</li>
               <li><code>customPrefix</code> - For custom label prefix</li>
               <li><code>customSuffix</code> - For custom label suffix</li>
+              <li><code>customPositionX</code> - For drag-and-drop custom X position (0-1)</li>
+              <li><code>customPositionY</code> - For drag-and-drop custom Y position (0-1)</li>
             </ul>
           </div>
           

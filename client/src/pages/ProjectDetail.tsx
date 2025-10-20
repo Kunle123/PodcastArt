@@ -423,12 +423,18 @@ export default function ProjectDetail() {
                         {/* Episode Number Overlay Preview */}
                         <div 
                           className={`absolute flex items-center justify-center ${
+                            template.episodeNumberPosition === 'custom' ? '' : // Custom positioning uses inline styles
                             template.episodeNumberPosition === 'top-left' ? 'top-[5%] left-[5%]' :
                             template.episodeNumberPosition === 'top-right' ? 'top-[5%] right-[5%]' :
                             template.episodeNumberPosition === 'bottom-left' ? 'bottom-[5%] left-[5%]' :
                             template.episodeNumberPosition === 'bottom-right' ? 'bottom-[5%] right-[5%]' :
                             'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
                           }`}
+                          style={template.episodeNumberPosition === 'custom' ? {
+                            left: `${(parseFloat(template.customPositionX || '0.25')) * 100}%`,
+                            top: `${(parseFloat(template.customPositionY || '0.25')) * 100}%`,
+                            transform: 'translate(-50%, -50%)',
+                          } : undefined}
                         >
                           <div 
                             className="px-[3%] py-[2%]"
