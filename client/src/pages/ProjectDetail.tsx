@@ -172,11 +172,13 @@ export default function ProjectDetail() {
         {/* Podcast Artwork */}
         {project.podcastArtworkUrl && (
           <div className="flex-shrink-0">
-            <img 
-              src={project.podcastArtworkUrl} 
-              alt={project.name}
-              className="w-32 h-32 rounded-lg border-2 border-border object-cover"
-            />
+            <div className="w-32 h-32 rounded-lg border-2 border-border overflow-hidden bg-muted">
+              <img 
+                src={project.podcastArtworkUrl} 
+                alt={project.name}
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
         )}
         
@@ -355,18 +357,18 @@ export default function ProjectDetail() {
                   <div>
                     <h3 className="font-medium mb-2">Base Artwork</h3>
                     {template.baseArtworkUrl ? (
-                      <div className="relative">
+                      <div className="relative aspect-square w-full">
                         <img 
                           src={template.baseArtworkUrl} 
                           alt="Base artwork"
-                          className="w-full rounded-lg border-2 border-border"
+                          className="w-full h-full object-contain rounded-lg border-2 border-border bg-muted"
                         />
-                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg">
                           Active
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted">
+                      <div className="aspect-square w-full flex items-center justify-center border-2 border-dashed rounded-lg bg-muted">
                         <p className="text-muted-foreground">No base artwork set</p>
                       </div>
                     )}
