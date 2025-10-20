@@ -222,7 +222,8 @@ export const appRouter = router({
       .input(z.object({ 
         projectId: z.string(), 
         rssUrl: z.string(),
-        clearExisting: z.boolean().optional().default(false)
+        clearExisting: z.boolean().optional().default(false),
+        useSequentialNumbers: z.boolean().optional().default(false)
       }))
       .mutation(async ({ ctx, input }) => {
         const { getProject, createEpisodes, getProjectTemplate, updateTemplate, updateProject, getProjectEpisodes } = await import('./db');
@@ -265,20 +266,27 @@ export const appRouter = router({
         
         console.log(`Importing ${newEpisodes.length} new episodes (${parsedFeed.episodes.length} total in feed, ${existingGuids.size} already imported)`);
         
-        // Create episodes with correct numbers from RSS feed
+        // Create episodes with numbering based on user preference
         const episodesToInsert = newEpisodes.map((ep: any, index: number) => {
-          // Use episode number from RSS feed, or assign sequential if missing
-          let episodeNumber = ep.episodeNumber?.toString() || null;
+          let episodeNumber: string;
           
-          // If no episode number in RSS, calculate a fallback
-          if (!episodeNumber) {
-            // Try to extract from title
-            const titleMatch = ep.title?.match(/(?:episode|ep\.?|#)\s*(\d+)/i);
-            if (titleMatch) {
-              episodeNumber = titleMatch[1];
-            } else {
-              // Use index + 1 as last resort
-              episodeNumber = (index + 1).toString();
+          if (input.useSequentialNumbers) {
+            // User wants sequential numbering (1, 2, 3...), ignore RSS feed numbers
+            episodeNumber = (index + 1).toString();
+          } else {
+            // Use episode number from RSS feed
+            episodeNumber = ep.episodeNumber?.toString() || null;
+            
+            // If no episode number in RSS, calculate a fallback
+            if (!episodeNumber) {
+              // Try to extract from title
+              const titleMatch = ep.title?.match(/(?:episode|ep\.?|#)\s*(\d+)/i);
+              if (titleMatch) {
+                episodeNumber = titleMatch[1];
+              } else {
+                // Use index + 1 as last resort
+                episodeNumber = (index + 1).toString();
+              }
             }
           }
           
@@ -299,7 +307,8 @@ export const appRouter = router({
 
         if (episodesToInsert.length > 0) {
           await createEpisodes(episodesToInsert);
-          console.log(`Created ${episodesToInsert.length} episodes with episode numbers from RSS feed`);
+          const numberingMethod = input.useSequentialNumbers ? 'sequential numbering' : 'RSS feed numbers';
+          console.log(`Created ${episodesToInsert.length} episodes using ${numberingMethod}`);
         }
         
         // Update project with podcast artwork AND RSS feed URL

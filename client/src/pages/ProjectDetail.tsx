@@ -153,17 +153,22 @@ export default function ProjectDetail() {
     },
   });
 
-  const handleImportRss = async (rssUrl: string, clearExisting: boolean = false) => {
+  const handleImportRss = async (rssUrl: string, clearExisting: boolean = false, useSequentialNumbers: boolean = false) => {
     const result = await importRssMutation.mutateAsync({ 
       projectId: id!, 
       rssUrl,
-      clearExisting 
+      clearExisting,
+      useSequentialNumbers
     });
     
+    const numberingType = useSequentialNumbers ? 'sequential numbers (1, 2, 3...)' : 'RSS feed numbers';
+    
     if (result.skipped && result.skipped > 0) {
-      toast.info(`Imported ${result.count} new episodes. ${result.skipped} episodes were already imported (skipped duplicates).`);
+      toast.info(`Imported ${result.count} new episodes with ${numberingType}. ${result.skipped} episodes were already imported (skipped duplicates).`);
     } else if (clearExisting) {
-      toast.success(`Re-imported all ${result.count} episodes with correct numbers from RSS feed!`);
+      toast.success(`Re-imported all ${result.count} episodes with ${numberingType}!`);
+    } else {
+      toast.success(`Imported ${result.count} episodes with ${numberingType}!`);
     }
   };
 
